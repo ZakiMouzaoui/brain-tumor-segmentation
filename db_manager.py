@@ -169,13 +169,25 @@ def send_email_with_password(name, email, password):
         return False
 
 
+# conn = sqlite3.connect('data.db')
+# c = conn.cursor()
+
+# c.execute("""
+#     UPDATE users SET created_at = ? WHERE id = ?
+# """, (date(year=2023, month=3, day=6), 2))
+# conn.commit()
+
+# c.close()
+# conn.close()
+
+
 def authenticate_user(email, password):
     conn = sqlite3.connect('data.db')
     c = conn.cursor()
 
     try:
         c.execute(
-            "SELECT id, name, password, role, is_active, profile_pic FROM users WHERE email = ?", (email,))
+            "SELECT id, name, password, role, is_active, email, profile_pic FROM users WHERE email = ?", (email,))
         result = c.fetchone()
 
         if result is None:
@@ -185,11 +197,10 @@ def authenticate_user(email, password):
                 return {"status": "error", "message": "Your account is currently blocked. Please contact the admin to restore it"}
 
         hashed_password = result[2]
-        print(result)
 
         if not bcrypt.checkpw(password.encode('utf-8'), hashed_password):
             return {"status": "error", "message": "Invalid password"}
-        return {"status": "success", "result": [result[0], result[3], result[1], result[-1]]}
+        return {"status": "success", "result": [result[0], result[3], result[1], result[4], result[5], result[-1]]}
 
     except Exception as e:
         print(e)
@@ -224,31 +235,31 @@ def is_password_strong(password):
     return True
 
 
-def change_password(user_id, old_password, new_password):
+def change_password(user_id, new_password):
     conn = sqlite3.connect('data.db')
     c = conn.cursor()
 
     try:
-        user = c.execute(
-            "SELECT password FROM users WHERE id = ?", (user_id,)).fetchone()
+        # user = c.execute(
+        #     "SELECT password FROM users WHERE id = ?", (user_id,)).fetchone()
 
-        hashed_old_password = user[0]
-        if not bcrypt.checkpw(old_password.encode('utf-8'), hashed_old_password):
-            return {
-                "status": "error", "message": "Incorrect old password"
-            }
-        else:
-            if is_password_strong(new_password):
-                hashed_password = bcrypt.hashpw(
-                    new_password.encode(), bcrypt.gensalt())
-                c.execute("""
+        # hashed_old_password = user[0]
+        # if not bcrypt.checkpw(old_password.encode('utf-8'), hashed_old_password):
+        #     return {
+        #         "status": "error", "message": "Incorrect old password"
+        #     }
+        # else:
+        if is_password_strong(new_password):
+            hashed_password = bcrypt.hashpw(
+                new_password.encode(), bcrypt.gensalt())
+            c.execute("""
                     UPDATE users SET password = ? WHERE id = ?
                 """, (hashed_password, user_id))
-                conn.commit()
+            conn.commit()
 
-                return {"status": "success", "message": "Password changed successfully"}
-            else:
-                return {"status": "error", "message": "Password must be atleast 8 characters and contains uppercase and lowercase"}
+            return {"status": "success", "message": "Password changed successfully"}
+        else:
+            return {"status": "error", "message": "Password must be atleast 8 characters and contains uppercase and lowercase"}
     except Exception as e:
         print(str(e))
         return {"status": "error", "message": "Something went wrong"}
@@ -269,20 +280,20 @@ def change_profile_pic(user_id, url):
     conn.close()
 
 
-def retrieve_users():
-    conn = sqlite3.connect('data.db')
-    c = conn.cursor()
+# def retrieve_users():
+#     conn = sqlite3.connect('data.db')
+#     c = conn.cursor()
 
-    try:
-        c.execute("SELECT COUNT(*) FROM users")
-        data = c.fetchone()[0]
-        return data
-    except Exception as e:
-        print(str(e))
-        return []
-    finally:
-        c.close()
-        conn.close()
+#     try:
+#         c.execute("SELECT COUNT(*) FROM users")
+#         data = c.fetchone()[0]
+#         return data
+#     except Exception as e:
+#         print(str(e))
+#         return []
+#     finally:
+#         c.close()
+#         conn.close()
 
 # def paginate_users(col_order, order_type, limit, offset):
 #     c.execute(
@@ -290,12 +301,12 @@ def retrieve_users():
 #     return c.fetchall()
 
 
-def paginate_users(col_order, order_type, limit, offset):
+def retrieve_users():
     conn = sqlite3.connect('data.db')
     c = conn.cursor()
 
     c.execute(
-        f"SELECT id, name, sex, email, role, is_active, created_at FROM users WHERE role != 0 AND role != 3 ORDER BY {col_order} {order_type}")
+        f"SELECT id, name, sex, email, role, is_active, created_at FROM users WHERE role != 0 AND role != 3")
     data = c.fetchall()
     c.close()
     conn.close()
@@ -513,17 +524,18 @@ def view_patients(doctor_id):
     return result
 
 
-def view_all_patients(col_order, order_type):
+def view_all_patients():
     conn = sqlite3.connect('data.db')
     c = conn.cursor()
 
-    c.execute(f"""SELECT p.user_id, p.name, p.sex, p.age, u.id, u.name, p.created_at FROM patients p
-                JOIN users u ON p.doctor_id = u.id ORDER BY p.{col_order} {order_type}
+    c.execute(f"""SELECT p.user_id, p.name, u.email, p.sex, p.age, u.id, u.name, p.created_at FROM patients p
+                JOIN users u ON p.doctor_id = u.id
                 """)
 
     result = c.fetchall()
     c.close()
     conn.close()
+
     return result
 
 
@@ -633,6 +645,14 @@ def delete_all_messages():
     conn.commit()
     c.close()
     conn.close()
+
+
+# conn = sqlite3.connect('data.db')
+# c = conn.cursor()
+# c.execute("DELETE FROM users WHERE id = 16")
+# conn.commit()
+# c = conn.cursor()
+# c.close()
 
 
 def add_history(activity):
@@ -793,10 +813,6 @@ def add_appointment(patient_id, doctor_id, date):
     c.close()
     conn.close()
 
-
-conn = sqlite3.connect('data.db')
-c = conn.cursor()
-
 # c.execute("""
 #         INSERT INTO appointment (patient_id, doctor_id, date, status) VALUES(?,?,?,?)
 #     """, ("8", "2", date(year=2023, month=3, day=20), 2))
@@ -883,14 +899,18 @@ def create_medical_record_table():
     c.execute("""
         DROP TABLE IF EXISTS medical_records
     """)
+
     c.execute("""
         CREATE TABLE medical_records(
             id INTEGER PRIMARY KEY,
             patient_id INTEGER UNIQUE,
+            doctor_id INTEGER,
             tumor_type TEXT,
             tumor_infos TEXT,
-            created_at DATE
-        )
+            file_format TEXT,
+            created_at DATE,
+            FOREIGN KEY (doctor_id) REFERENCES users (id)
+            )
     """)
     conn.commit()
     c.close()
@@ -900,14 +920,14 @@ def create_medical_record_table():
 # create_medical_record_table()
 
 
-def add_medical_record(patient_id, tumor_type, tumor_infos):
+def add_medical_record(patient_id, doctor_id, tumor_type, tumor_infos, file_format):
     conn = sqlite3.connect('data.db')
     c = conn.cursor()
 
     c.execute(""" 
-        INSERT OR REPLACE INTO medical_records(patient_id, tumor_type, tumor_infos, created_at) 
-        VALUES(?,?,?,?) ON CONFLICT(patient_id) DO UPDATE SET tumor_type = excluded.tumor_type, tumor_infos = excluded.tumor_infos
-    """, (patient_id, tumor_type, tumor_infos, date.today()))
+        INSERT OR REPLACE INTO medical_records(patient_id, doctor_id, tumor_type, tumor_infos, file_format, created_at) 
+        VALUES(?,?,?,?,?,?) ON CONFLICT(patient_id) DO UPDATE SET doctor_id = excluded.doctor_id, tumor_type = excluded.tumor_type, tumor_infos = excluded.tumor_infos
+    """, (patient_id, doctor_id, tumor_type, tumor_infos, file_format, date.today()))
 
     conn.commit()
     c.close()
@@ -947,6 +967,23 @@ def get_medical_records_for_patient(patient_id):
     return data
 
 
+def get_medical_records_for_doctor(doctor_id):
+    conn = sqlite3.connect('data.db')
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT medical_records.*, patients.sex, patients.age
+        FROM medical_records
+        JOIN patients ON medical_records.doctor_id = patients.doctor_id
+        WHERE patients.doctor_id = ?
+    """, (doctor_id,))
+    data = c.fetchall()
+
+    c.close()
+    conn.close()
+    return data
+
+
 def check_if_rated(user_id):
     conn = sqlite3.connect('data.db')
     c = conn.cursor()
@@ -970,11 +1007,26 @@ def add_rating(user_id, rating, text):
     c = conn.cursor()
 
     c.execute("""
-        INSERT INTO ratings VALUES(user_id, rating, text, created_at)
+        INSERT INTO ratings (user_id, rating, text, created_at) VALUES(?,?,?,?)
     """, (user_id, rating, text, date.today()))
     conn.commit()
     c.close()
     conn.close()
+
+
+def get_ratings():
+    conn = sqlite3.connect('data.db')
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT r.id, u.name, r.rating, r.text, r.created_at FROM ratings r JOIN users u ON u.id = r.user_id
+    """)
+
+    data = c.fetchall()
+    c.close()
+    conn.close()
+
+    return data
 
 # c.execute("""
 #     UPDATE users SET profile_pic = ? WHERE role = 3
@@ -1021,10 +1073,10 @@ def add_rating(user_id, rating, text):
 # create_notifications_table()
 
 # hashed_password = bcrypt.hashpw(
-#     "zakizaki".encode(), bcrypt.gensalt())
+#     "aminaamina".encode(), bcrypt.gensalt())
 # conn = sqlite3.connect('data.db')
 # c = conn.cursor()
-# c.execute("UPDATE users SET password = ? WHERE id = ?", (hashed_password, 2))
+# c.execute("UPDATE users SET email = ? WHERE id = ?", ("amina@test.com", 4))
 # conn.commit()
 # c.close()
 # conn.close()
@@ -1040,7 +1092,7 @@ def add_rating(user_id, rating, text):
 #             user_id INTEGER,
 #             rating INTEGER,
 #             text TEXT,
-#             date DATE,
+#             created_at DATE,
 #             FOREIGN KEY (user_id) REFERENCES users (id)
 #         )
 #     """)

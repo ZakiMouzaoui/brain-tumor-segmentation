@@ -3,4 +3,5 @@ uploads
 temp
 requirements.txt
 .streamlit
-assets/ARUGD_training_checkpoint2.h5
+models
+.env

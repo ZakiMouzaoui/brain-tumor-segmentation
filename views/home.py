@@ -1,3 +1,5 @@
+import base64
+import time
 import cv2
 import dicom2nifti
 from antspynet.utilities import brain_extraction
@@ -21,18 +23,19 @@ from db_manager import view_patients, add_medical_record, check_if_rated, add_ra
 import streamlit as st
 import matplotlib.pyplot as plt
 from streamlit_star_rating import st_star_rating
-plt.style.use('default')
 
+if st.session_state["theme"] == "dark":
+    plt.style.use('dark_background')
+else:
+    plt.style.use('default')
 
 ########################## MAIN FUNCTION ###########################################
-def home_page():
-    def get_patients():
-        patients = view_patients(st.session_state["user_id"])
-        return patients
 
+
+def home_page():
     @st.cache_resource(show_spinner=False)
     def load_seg_model():
-        return load_model("assets/ARUGD_training_checkpoint2.h5", compile=False)
+        return load_model("models/attention_res_unet_guided_decoder.h5", compile=False)
 
     @st.cache_data(show_spinner=False)
     def load_lottie_file(file_path):
@@ -44,15 +47,27 @@ def home_page():
         std = img.std()
         return (img - mean) / (std + 0.00001)
 
-    def segment_tumor(model, t1, t1ce, t2, flair):
-        if st.session_state["file_format"] == "DICOM":
-            t1 = cv2.resize(t1[:, :, 0:-1], (240, 240))
-            t1ce = cv2.resize(t1ce[:, :, 0:-1], (240, 240))
-            t2 = cv2.resize(t2[:, :, 0:-1], (240, 240))
-            flair = cv2.resize(flair[:, :, 0:-1], (240, 240))
+    def create_slices(inp):
+        res = np.zeros((240, 240, 20))
 
-        x = np.stack([normalize(t1), normalize(t1ce),
-                     normalize(t2), normalize(flair)])
+        start_slice = 60
+        step = 3
+        num_slices = 20
+
+        for i in range(num_slices):
+            slice_index = start_slice + i * step
+            res[:, :, i] = inp[:, :, slice_index]
+        return res
+
+    def segment_tumor(model, t1_seq, t1ce_seq, t2_seq, flair_seq):
+        if st.session_state["file_format"] == "DICOM":
+            t1_seq = cv2.resize(t1_seq[:, :, :], (240, 240))
+            t1ce_seq = cv2.resize(t1ce_seq[:, :, :], (240, 240))
+            t2_seq = cv2.resize(t2_seq[:, :, :], (240, 240))
+            flair_seq = cv2.resize(flair_seq[:, :, :], (240, 240))
+
+        x = np.stack([normalize(t1_seq), normalize(t1ce_seq),
+                     normalize(t2_seq), normalize(flair_seq)])
         x = np.transpose(x, (3, 1, 2, 0))
         prediction = model.predict(x)
         pred_argmax = np.argmax(prediction[0], axis=-1)
@@ -61,12 +76,12 @@ def home_page():
     @st.cache_data(show_spinner=False)
     def load_classification_model():
         class_model = pickle.load(
-            open("assets/random_forest_classifier.pkl", "rb"))
+            open("models/random_forest_classifier.pkl", "rb"))
         return class_model
 
     @st.cache_data(show_spinner=False)
     def load_scaler():
-        scaler = pickle.load(open("assets/scaler.pkl", "rb"))
+        scaler = pickle.load(open("models/scaler.pkl", "rb"))
         return scaler
 
     def classify_tumor(model, sequ):
@@ -79,6 +94,8 @@ def home_page():
         extractor = featureextractor.RadiomicsFeatureExtractor(**settings)
         extractor.enableFeatureClassByName('glcm')
 
+        if st.session_state["file_format"] == "NIFTI":
+            sequ = normalize(sequ)
         sequ = sitk.GetImageFromArray(sequ)
         seg = sitk.GetImageFromArray(seg)
 
@@ -202,8 +219,11 @@ def home_page():
         return fig
 
     # @st.cache_data(show_spinner=False)
-    def plot_seg(cmap_val="viridis"):
+    def plot_seg(seq_, cmap_val="viridis"):
         seg = st.session_state["prediction"]
+
+        # seq_ = cv2.resize(seq_[:, :, :], (240, 240))
+
         if st.session_state["file_format"] == "DICOM":
             angle = 90
         else:
@@ -213,18 +233,22 @@ def home_page():
         rows = 4
         fig, axes = plt.subplots(nrows=rows, ncols=cols, figsize=(5, 4))
         idx = 0
-        class_labels = ["No Tumor", "Tumor Core/Necrosis",
-                        "Edema", "Enhancing Tumor"]
+
         cmap = get_cmap(cmap_val)
 
         for i in range(rows):
             for j in range(cols):
+                tumor_region = np.where(
+                    seg[idx, :, :] > 0, seg[idx, :, :], np.nan)
                 axes[i, j].imshow(transform.rotate(
-                    seg[idx, :, :], angle=angle), cmap=cmap)
+                    seq_[:, :, idx], angle=angle), cmap="gray")
+                axes[i, j].imshow(transform.rotate(
+                    tumor_region, angle=angle), cmap=cmap)
+
                 axes[i, j].axis("off")
                 idx += 1
 
-        # legend_patches = [mpatches.Patch(color=cmap(
+        # legend_patches = [Patch(color=cmap(
         #     i / (len(class_labels) - 1)), label=label) for i, label in enumerate(class_labels)]
         # plt.legend(handles=legend_patches, loc="upper right", fontsize=6.5)
         return fig
@@ -233,19 +257,19 @@ def home_page():
         ants_image = ants.image_read(path)
         brain_mask = brain_extraction(
             ants_image, verbose=False, modality=modality)
-        # brain_mask = ants.get_mask(prob_brain_mask, low_thresh=0.5)
+        # brain_mask = ants.get_mask(brain_mask, low_thresh=0.5)
         result = ants.mask_image(ants_image, brain_mask)
 
         return result
 
     def upload_file(uploaded_file, modality):
-        os.makedirs(f"temp/{id}/"+modality, exist_ok=True)
+        os.makedirs(f"temp/{id}/"+modality)
 
         temp_dir = os.path.join(f"temp/{id}/", modality)
-        files = glob(temp_dir + "/*")
+        # files = glob(temp_dir + "/*")
 
-        for f in files:
-            os.remove(f)
+        # for f in files:
+        #     os.remove(f)
 
         for file in uploaded_file:
             with open(temp_dir + "/"+file.name, "wb") as f:
@@ -254,19 +278,49 @@ def home_page():
     def upload_nifti(upload_file, path):
         with open(path + "/"+upload_file.name, "wb") as f:
             f.write(upload_file.getvalue())
+
+    @st.cache_data(show_spinner=False)
+    def get_base64_img1(bin_file):
+        with open(bin_file, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+
+    @st.cache_data(show_spinner=False)
+    def get_base64_img2(bin_file):
+        with open(bin_file, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+
+    @st.cache_data(show_spinner=False)
+    def get_base64_img3(bin_file):
+        with open(bin_file, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+
     id = st.session_state["user_id"]
-    if not "has_rated" in st.session_state:
-        st.session_state["has_rated"] = check_if_rated(id)
+    # st.write("""
+    #     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    # """, unsafe_allow_html=True)
+
+    if not "doctor-patients" in st.session_state or st.session_state["doctor-patients"] is None:
         st.session_state["show_rating"] = False
-        st.session_state["patients"] = get_patients()
+        st.session_state["doctor-patients"] = view_patients(id)
+        st.session_state["submitted"] = False
+        st.session_state["segment_loading"] = False
+        st.session_state["segmented"] = False
+        st.session_state["converted"] = False
+        st.session_state["prediction"] = None
 
     if st.session_state["authenticated"] == False:
         disabled = True
         submit_help = "Please login"
 
     else:
+        st.session_state["has_rated"] = check_if_rated(id)
         submit_help = ""
         disabled = False
+
+    # st.session_state["submitted"] = False
 
     hide_streamlit_style = """
                 <style>
@@ -319,33 +373,134 @@ def home_page():
     """, unsafe_allow_html=True)
 
     st.set_option('deprecation.showPyplotGlobalUse', False)
-    st.markdown("<h1 style='text-align: center'>Brain AI 🧠</h1>",
+    st.markdown("<h1 style='text-align: center'>Brain AI</h1>",
                 unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        card(
-            title="Accuracy",
-            text="Accurate segmentation for targeted treatment",
-            image="https://i0.wp.com/statisticsbyjim.com/wp-content/uploads/2021/09/target.png?resize=300%2C291&ssl=1",
-            url=""
-        )
+    # col1, col2, col3 = st.columns(3)
+    # with col1:
+    #     card(
+    #         title="Accuracy",
+    #         text="Accurate segmentation for targeted treatment",
+    #         image="https://i0.wp.com/statisticsbyjim.com/wp-content/uploads/2021/09/target.png?resize=300%2C291&ssl=1",
+    #         url=""
+    #     )
 
-    with col2:
-        card(
-            title="Speed",
-            text="Efficient brain tumor segmentation for faster diagnosis",
-            image="https://storage.googleapis.com/aliz-website-sandbox-strapi-cms/Customer_experience_cb479609da/Customer_experience_cb479609da.png",
-            url=""
-        )
+    # with col2:
+    #     card(
+    #         title="Speed",
+    #         text="Efficient brain tumor segmentation for faster diagnosis",
+    #         image="https://storage.googleapis.com/aliz-website-sandbox-strapi-cms/Customer_experience_cb479609da/Customer_experience_cb479609da.png",
+    #         url=""
+    #     )
 
-    with col3:
-        card(
-            title="Ease",
-            text="Effortless segmentation with one button click",
-            image="https://media.istockphoto.com/id/1172207434/vector/click-here-the-button.jpg?s=612x612&w=0&k=20&c=uszvKX_5Sc0jKPq4jiMNbEgK7EOC3XFg-J6BsDsfwcE=",
-            url=""
-        )
+    # with col3:
+    #     card(
+    #         title="Ease",
+    #         text="Effortless segmentation with one button click",
+    #         image="https://media.istockphoto.com/id/1172207434/vector/click-here-the-button.jpg?s=612x612&w=0&k=20&c=uszvKX_5Sc0jKPq4jiMNbEgK7EOC3XFg-J6BsDsfwcE=",
+    #         url=""
+    #     )
+    accuracy_img = get_base64_img1("assets/accuracy.png")
+    speed_img = get_base64_img2("assets/speed.png")
+    ease_img = get_base64_img3("assets/ease.png")
+
+    st.write(f"""
+        <div class="cards-list">
+            <div class="card 1">
+                <div class="card_image"> <img src="data:image/png;base64,{accuracy_img}" /> </div>
+                <div class="card_title">
+                    Accuracy
+                    <div class="card-subtitle">Accurate segmentation for targeted treatment</div>
+                </div>
+            </div>
+            <div class="card 1">
+                <div class="card_image"> <img src="data:image/png;base64,{speed_img}" /> </div>
+                <div class="card_title">
+                    Speed
+                    <div class="card-subtitle">Efficient brain tumor segmentation for faster diagnosis</div>
+                </div>
+            </div>
+            <div class="card 1">
+                <div class="card_image"> <img src="data:image/png;base64,{ease_img}" /> </div>
+                <div class="card_title">
+                    Ease
+                    <div class="card-subtitle">Effortless segmentation with one button click</div>
+                </div>
+            </div>
+            
+        </div>
+    """, unsafe_allow_html=True)
+    st.markdown('''
+        <style>
+            .cards-list {
+        z-index: 0;
+        width: 100%;
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        }
+
+        .card {
+        position: relative;
+        margin: 30px auto;
+        width: 300px;
+        height: 250px;
+        border-radius: 40px;
+        box-shadow: 5px 5px 30px 7px rgba(0,0,0,0.1), -5px -5px 30px 7px rgba(0,0,0,0.1);
+        cursor: pointer;
+        transition: 0.4s;
+        }
+
+        .card .card_image {
+        width: inherit;
+        height: inherit;
+        border-radius: 40px;
+        linear-gradient(to bottom, rgba(245, 246, 252, 0.52), rgba(117, 19, 93, 0.73))
+        }
+
+        .card .card_image img {
+        width: inherit;
+        height: inherit;
+        border-radius: 40px;
+        object-fit: cover;
+        }
+
+        .card .card_title {
+        text-align: center;
+        border-radius: 40px;
+        font-weight: bold;
+        font-size: 2rem !important;
+        
+        position: absolute;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.35); /* Adjust the opacity as needed */
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        }
+        .card .card-subtitle{
+            font-size:1.7rem;
+            font-weight: 500;
+        }
+
+        .card:hover {
+        transform: scale(0.9, 0.9);
+        box-shadow: 5px 5px 30px 15px rgba(0,0,0,0.25), 
+            -5px -5px 30px 15px rgba(0,0,0,0.22);
+        }
+
+        @media all and (max-width: 500px) {
+        .card-list {
+            /* On small screens, we are no longer using row direction but column */
+            flex-direction: column;
+            }
+        }
+        </style>
+    ''', unsafe_allow_html=True)
 
     st.markdown("### ✔️ Semantic segmentation for brain tumor")
     st.markdown(
@@ -375,7 +530,7 @@ def home_page():
             st.session_state["submitted"] = False
             st.session_state["converted"] = False
 
-    with st.form("my-form"):
+    with st.form("my-form", clear_on_submit=True):
         col1, col2 = st.columns(2, gap="small")
         with col1:
             t1_file = st.file_uploader(
@@ -400,13 +555,14 @@ def home_page():
 
         if submitted:
             st.session_state["prediction"] = None
+            st.session_state["submitted"] = False
+            st.session_state["converted"] = False
+
             if file_format == "DICOM":
                 if len(t1_file) != 0 and len(t2_file) != 0 and len(t1ce_file) != 0 and len(flair_file) != 0:
                     st.session_state["submitted"] = True
-                    st.session_state["Prediction"] = None
                 else:
                     _, __, ___ = st.columns([1, 2, 1])
-                    st.session_state["submitted"] = False
                     with _:
                         st.error("Please submit all necessary files")
             else:
@@ -414,38 +570,27 @@ def home_page():
                     st.session_state["submitted"] = True
                 else:
                     _, __, ___ = st.columns([1, 2, 1])
-                    st.session_state["submitted"] = False
+
                     with _:
                         st.error("Please submit all necessary files")
 
-    if st.session_state["submitted"]:
+    if st.session_state["submitted"] == True:
         seg_disabled = False
         seg_help = ""
-        st.session_state["prediction"] = None
-        # st.session_state["converted"] = False
-        st.session_state["file_format"] = file_format
-        # id = st.session_state["user_id"]
-        if file_format == "DICOM":
 
+        st.session_state["file_format"] = file_format
+
+        if file_format == "DICOM":
             if not st.session_state["converted"]:
+                if os.path.exists(f"temp/{id}"):
+                    shutil.rmtree(f"temp/{id}")
+
                 upload_file(t1_file, "t1")
                 upload_file(t1ce_file, "t1ce")
                 upload_file(t2_file, "t2")
                 upload_file(flair_file, "flair")
 
-                with st.spinner("Converting your files..."):
-                    if os.path.exists(f"temp/{id}/t1_nii"):
-                        shutil.rmtree(f"temp/{id}/t1_nii")
-
-                    if os.path.exists(f"temp/{id}/t1ce_nii"):
-                        shutil.rmtree(f"temp/{id}/t1ce_nii")
-
-                    if os.path.exists(f"temp/{id}t2_nii"):
-                        shutil.rmtree(f"temp/{id}/t2_nii")
-
-                    if os.path.exists(f"temp/{id}/flair_nii"):
-                        shutil.rmtree(f"temp/{id}/flair_nii")
-
+                with st.spinner("Converting DICOM files to NIFTI..."):
                     os.makedirs(f"temp/{id}/t1_nii")
                     os.makedirs(f"temp/{id}/t2_nii")
                     os.makedirs(f"temp/{id}/t1ce_nii")
@@ -462,37 +607,33 @@ def home_page():
                 st.session_state["converted"] = True
         else:
             st.session_state["converted"] = True
-            if os.path.exists("temp/t1_nii"):
-                shutil.rmtree("temp/t1_nii")
+            if os.path.exists(f"temp/{id}"):
+                shutil.rmtree(f"temp/{id}")
 
-            if os.path.exists("temp/t1ce_nii"):
-                shutil.rmtree("temp/t1ce_nii")
+            os.makedirs(f"temp/{id}/t1_nii")
+            os.makedirs(f"temp/{id}/t2_nii")
+            os.makedirs(f"temp/{id}/t1ce_nii")
+            os.makedirs(f"temp/{id}/flair_nii")
 
-            if os.path.exists("temp/t2_nii"):
-                shutil.rmtree("temp/t2_nii")
+            upload_nifti(t1_file, f"temp/{id}/t1_nii")
+            upload_nifti(t1ce_file, f"temp/{id}/t1ce_nii")
+            upload_nifti(t2_file, f"temp/{id}/t2_nii")
+            upload_nifti(flair_file, f"temp/{id}/flair_nii")
+        _, __, ___ = st.columns([1, 3, 2])
+        with _:
+            st.success("Your files are ready")
+            # time.sleep(1)
+            # submit_success.empty()
 
-            if os.path.exists("temp/flair_nii"):
-                shutil.rmtree("temp/flair_nii")
+        # t1_nii = glob(f"temp/{id}/t1_nii/*")[0]
+        # t1ce_nii = glob(f"temp/{id}/t1ce_nii/*")[0]
+        # t2_nii = glob(f"temp/{id}/t2_nii/*")[0]
+        # flair_nii = glob(f"temp/{id}/flair_nii/*")[0]
 
-            os.makedirs("temp/t1_nii")
-            os.makedirs("temp/t2_nii")
-            os.makedirs("temp/t1ce_nii")
-            os.makedirs("temp/flair_nii")
-
-            upload_nifti(t1_file, "temp/t1_nii")
-            upload_nifti(t1ce_file, "temp/t1ce_nii")
-            upload_nifti(t2_file, "temp/t2_nii")
-            upload_nifti(flair_file, "temp/flair_nii")
-
-        t1_nii = glob(f"temp/{id}/t1_nii/*")[0]
-        t1ce_nii = glob(f"temp/{id}/t1ce_nii/*")[0]
-        t2_nii = glob(f"temp/{id}/t2_nii/*")[0]
-        flair_nii = glob(f"temp/{id}/flair_nii/*")[0]
-
-        st.session_state['t1'] = t1_nii
-        st.session_state['t1ce'] = t1ce_nii
-        st.session_state['t2'] = t2_nii
-        st.session_state['flair'] = flair_nii
+        # st.session_state['t1'] = t1_nii
+        # st.session_state['t1ce'] = t1ce_nii
+        # st.session_state['t2'] = t2_nii
+        # st.session_state['flair'] = flair_nii
     else:
         seg_disabled = True
         seg_help = "Make sure you uploaded the necessary files"
@@ -504,7 +645,8 @@ def home_page():
                 preprocess = st.radio(
                     "Choose an option",
                     ('With Skull Removal', 'Without Skull Removal'),
-                    help="Choose whether you remove the skull before or no"
+                    help="Choose whether you remove the skull before or no",
+                    label_visibility="collapsed"
                 )
 
                 # Every form must have a submit button.
@@ -515,31 +657,42 @@ def home_page():
                     st.session_state["segment_loading"] = True
 
         if st.session_state["segment_loading"] == True:
+            t1_nii = glob(f"temp/{id}/t1_nii/*")[0]
+            t1ce_nii = glob(f"temp/{id}/t1ce_nii/*")[0]
+            t2_nii = glob(f"temp/{id}/t2_nii/*")[0]
+            flair_nii = glob(f"temp/{id}/flair_nii/*")[0]
+
+            st.session_state['t1'] = t1_nii
+            st.session_state['t1ce'] = t1ce_nii
+            st.session_state['t2'] = t2_nii
+            st.session_state['flair'] = flair_nii
             # PREPROCESSING STEP
             if preprocess == "With Skull Removal":
-                with st.spinner("Preprocessing T1..."):
+                with st.spinner("Removing skull from T1"):
                     t1 = skull_strip(t1_nii, "t1")
-                with st.spinner("Preprocessing T1*..."):
+                with st.spinner("Removing skull from T1*"):
                     t1ce = skull_strip(t1ce_nii, "t1")
-                with st.spinner("Preprocessing T2..."):
+                with st.spinner("Removing skull from T2"):
                     t2 = skull_strip(t2_nii, "t2")
-                with st.spinner("Preprocessing Flair..."):
+                with st.spinner("Removing skull from FLAIR"):
                     flair = skull_strip(flair_nii, "flair")
             else:
+
                 t1 = nib.load(t1_nii).get_fdata()
                 t1ce = nib.load(t1ce_nii).get_fdata()
-                t2 = nib.load(t1_nii).get_fdata()
-                flair = nib.load(t1_nii).get_fdata()
+                t2 = nib.load(t2_nii).get_fdata()
+                flair = nib.load(flair_nii).get_fdata()
             if st.session_state["file_format"] == "NIFTI":
-                t1 = t1[:, :, 60:80]
-                t1ce = t1ce[:, :, 60:80]
-                t2 = t2[:, :, 60:80]
-                flair = flair[:, :, 60:80]
+                t1 = create_slices(t1)
+                t1ce = create_slices(t1ce)
+                t2 = create_slices(t2)
+                flair = create_slices(flair)
 
-            st.session_state["final_t2"] = t1
+            st.session_state["final_t2"] = t2
 
             # SEGMENTATION STEP
             lottie_json = load_lottie_file("assets/brain ai animation.json")
+
             with st_lottie_spinner(lottie_json, height=100, speed=2, quality="low"):
                 model = load_seg_model()
                 segment_tumor(
@@ -565,12 +718,12 @@ def home_page():
             if sequence:
                 st.session_state["sequence"] = sequence
         with cc3:
-            cmap = st.selectbox("Choose a color map", options=[
-                                "viridis", "rainbow", "ocean"], format_func=lambda x: "color 1" if x == "viridis" else "color 2" if x == "rainbow" else "color 3", key="cmap-select")
+            cmap = st.selectbox("Choose a color type", options=[
+                                "viridis", "rainbow", "ocean"], format_func=lambda x: "Type 1" if x == "viridis" else "Type 2" if x == "rainbow" else "Type 3", key="cmap-select")
             st.session_state["cmap"] = cmap
         with ___:
 
-            st.image(f"assets/{cmap}-cmap.png")
+            st.image(f"assets/{cmap}-dark.png")
 
         cc1, cc2 = st.columns(2)
         if st.session_state["sequence"] == "T1":
@@ -583,13 +736,14 @@ def home_page():
             seq = nib.load(st.session_state["flair"]).get_fdata()
 
         if st.session_state["file_format"] == "NIFTI":
-            seq = seq[:, :, 60:80]
+            seq = create_slices(seq)
         with cc1:
+            seq = cv2.resize(seq[:, :, :], (240, 240))
             fig2 = plot_ants(seq)
             st.pyplot(fig2, use_container_width=True)
 
         with cc2:
-            fig = plot_seg(cmap_val=st.session_state["cmap"])
+            fig = plot_seg(seq, cmap_val=st.session_state["cmap"])
             st.pyplot(fig, use_container_width=True)
         ####### END OF SELECT BOX ###########################
         st.divider()
@@ -601,7 +755,7 @@ def home_page():
             t2_ = st.session_state["final_t2"]
             if st.session_state["file_format"] == "DICOM":
 
-                t2_ = cv2.resize(t2_[:, :, 0:-1], (240, 240))
+                t2_ = cv2.resize(t2_[:, :, :], (240, 240))
 
             classification = st.button("Tumor Type", use_container_width=True)
             if classification:
@@ -639,7 +793,7 @@ def home_page():
         with co3:
             st.markdown(
                 "<h4>Save medical record</h4>", unsafe_allow_html=True)
-            patients = st.session_state["patients"]
+            patients = st.session_state["doctor-patients"]
             with st.form("save-form", clear_on_submit=True):
                 patient_select = st.selectbox(
                     "Select a patient", options=patients, format_func=lambda x: x[1])
@@ -660,18 +814,39 @@ def home_page():
                     with st.spinner("saving ..."):
                         nifti = nib.Nifti1Image(
                             st.session_state["prediction"].astype(np.float32), np.eye(4))
-                        if os.path.exists(f"uploads/{patient_select[0]}/segmentation"):
+
+                        if os.path.exists(f"uploads/{patient_select[0]}/results"):
                             shutil.rmtree(
-                                f"uploads/{patient_select[0]}/segmentation")
+                                f"uploads/{patient_select[0]}/results")
 
                         os.makedirs(
-                            f"uploads/{patient_select[0]}/segmentation")
+                            f"uploads/{patient_select[0]}/results/segmentation")
+                        # os.makedirs(
+                        #     f"uploads/{patient_select[0]}/sequences")
+                        # os.makedirs(
+                        #     f"uploads/{patient_select[0]}/t1ce")
+                        # os.makedirs(
+                        #     f"uploads/{patient_select[0]}/t2")
+                        # os.makedirs(
+                        #     f"uploads/{patient_select[0]}/flair")
+
+                        # shutil.move(
+                        #     f"temp/{id}/flair_nii", f"uploads/{id}/sequences/")
+                        # shutil.move(
+                        #     f"temp/{id}/t1_nii", f"uploads/{id}/sequences/")
+                        # shutil.move(
+                        #     f"temp/{id}/t1ce_nii", f"uploads/{id}/sequences/")
+
+                        shutil.move(
+                            f"temp/{id}/t2_nii", f"uploads/{patient_select[0]}/results/")
+
                         nib.save(
-                            nifti, f"uploads/{patient_select[0]}/segmentation"+"/segmentation.nii.gz")
+                            nifti, f"uploads/{patient_select[0]}/results/segmentation/segmentation.nii.gz")
 
                     json_str = json.dumps(st.session_state["tumor_infos"])
 
-                    add_medical_record(patient_select[0], tumor_type, json_str)
+                    add_medical_record(
+                        patient_select[0], id, tumor_type, json_str, st.session_state["file_format"])
                     st.success("Medical record saved")
                     st.session_state["prediction"] = None
                     shutil.rmtree(f"temp/{id}")

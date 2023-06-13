@@ -2,7 +2,7 @@ data.db
 uploads/
 temp/
 requirements.txt
-.streamlit
+.streamlit/
 models/
 .env
 .streamlit/

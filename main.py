@@ -2,7 +2,6 @@ import base64
 import streamlit as st
 from streamlit_option_menu import option_menu as om
 import toml
-import jwt
 from dotenv import load_dotenv
 import os
 from streamlit_cookies_manager import EncryptedCookieManager
@@ -19,15 +18,15 @@ def change_theme(config, theme):
 load_dotenv()
 
 
-def verify_jwt_token(token):
-    try:
-        payload = jwt.decode(token, os.getenv(
-            "JWT_SECRET_KEY"), algorithms=["HS256"])
-        return payload
-    except jwt.ExpiredSignatureError:
-        return None  # Token has expired
-    except jwt.InvalidTokenError:
-        return None  # Invalid token
+# def verify_jwt_token(token):
+#     try:
+#         payload = jwt.decode(token, os.getenv(
+#             "JWT_SECRET_KEY"), algorithms=["HS256"])
+#         return payload
+#     except jwt.ExpiredSignatureError:
+#         return None  # Token has expired
+#     except jwt.InvalidTokenError:
+#         return None  # Invalid token
 
 
 st.set_page_config(page_title='Brain AI', page_icon="🧠", layout="wide")

@@ -808,6 +808,15 @@ def add_appointment(patient_id, doctor_id, date):
 # c.close()
 # conn.close()
 
+# conn = sqlite3.connect('data.db')
+# c = conn.cursor()
+# c.execute("""
+#     UPDATE medical_records SET file_format=? WHERE patient_id = 8
+# """, ("DICOM",))
+# conn.commit()
+# c.close()
+# conn.close()
+
 
 def get_appointments():
     conn = sqlite3.connect('data.db')

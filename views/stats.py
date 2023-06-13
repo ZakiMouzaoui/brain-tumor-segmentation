@@ -28,6 +28,7 @@ def stats_page():
         return res
 
     def plot_seg(format, sequence, segment, cmap_val="viridis"):
+        st.write(format)
         if format == "DICOM":
             angle = 90
             sequence = cv2.resize(sequence[:, :, :], (240, 240))

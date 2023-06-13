@@ -84,15 +84,22 @@ def home_page():
         scaler = pickle.load(open("models/scaler.pkl", "rb"))
         return scaler
 
+    @st.cache_data(show_spinner=False)
+    def load_extractor():
+        extractor = pickle.load(
+            open("models/extractor.pkl", "rb"))
+        return extractor
+
     def classify_tumor(model, sequ):
         seg = st.session_state["prediction"].transpose((2, 1, 0))
-        settings = {}
-        settings['binWidth'] = 25
-        settings['resampledPixelSpacing'] = None
-        settings['interpolator'] = 'sitkBSpline'
-        settings['verbose'] = False
-        extractor = featureextractor.RadiomicsFeatureExtractor(**settings)
-        extractor.enableFeatureClassByName('glcm')
+        extractor = load_extractor()
+        # settings = {}
+        # settings['binWidth'] = 25
+        # settings['resampledPixelSpacing'] = None
+        # settings['interpolator'] = 'sitkBSpline'
+        # settings['verbose'] = False
+        # extractor = featureextractor.RadiomicsFeatureExtractor(**settings)
+        # extractor.enableFeatureClassByName('glcm')
 
         if st.session_state["file_format"] == "NIFTI":
             pass
@@ -689,7 +696,7 @@ def home_page():
                 t2 = create_slices(t2)
                 flair = create_slices(flair)
 
-            st.session_state["final_t2"] = t2
+            st.session_state["final_t2"] = t1
 
             # SEGMENTATION STEP
             lottie_json = load_lottie_file("assets/brain ai animation.json")
@@ -847,7 +854,7 @@ def home_page():
                     json_str = json.dumps(st.session_state["tumor_infos"])
 
                     add_medical_record(
-                        patient_select[0], id, tumor_type, json_str, st.session_state["file_format"])
+                        patient_select[0], id, tumor_type, json_str, file_format)
                     st.success("Medical record saved")
                     st.session_state["prediction"] = None
                     shutil.rmtree(f"temp/{id}")

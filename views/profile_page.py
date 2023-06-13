@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import shutil
 import streamlit as st
 from db_manager import change_password, change_profile_pic
 import time
@@ -54,10 +55,12 @@ def profile_page(cookies):
                              use_container_width=True)
         if save:
             image = Image.open(file)
+            if os.path.exists(f"uploads/{user_id}/profile"):
+                shutil.rmtree(f"uploads/{user_id}/profile")
 
-            os.makedirs(f"uploads/{user_id}", exist_ok=True)
+            os.makedirs(f"uploads/{user_id}/profile", exist_ok=True)
             ext = file.name.split(".")[-1]
-            path = f"uploads/{user_id}/profile_img.{ext}"
+            path = f"uploads/{user_id}/profile/profile_img.{ext}"
             image.save(path)
             st.session_state["user_pic"] = path
 

@@ -94,6 +94,7 @@ if not "authenticated" in st.session_state or st.session_state["authenticated"] 
         st.session_state["role"] = cookies["role"]
         st.session_state["user_name"] = cookies["user_name"]
         st.session_state["user_pic"] = cookies["user_pic"]
+        st.session_state["email"] = cookies["email"]
 
 pages_ = []
 icons_ = []
@@ -159,14 +160,6 @@ with st.sidebar:
             if st.session_state["authenticated"]:
                 logout = st.button("Logout ")
                 if logout:
-                    # cookies = EncryptedCookieManager(
-                    #     prefix="brain-ai-cookies/",
-                    #     password=os.getenv("COOKIES_PASSWORD"),
-                    # )
-                    # if not cookies.ready():
-                    #     st.write("not ready")
-                    #     st.stop()
-                    # st.write(cookies)
                     cookies["user_id"] = "-1"
 
                     st.session_state["authenticated"] = None

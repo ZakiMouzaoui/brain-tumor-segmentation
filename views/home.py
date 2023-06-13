@@ -95,7 +95,8 @@ def home_page():
         extractor.enableFeatureClassByName('glcm')
 
         if st.session_state["file_format"] == "NIFTI":
-            sequ = normalize(sequ)
+            pass
+        sequ = normalize(sequ)
         sequ = sitk.GetImageFromArray(sequ)
         seg = sitk.GetImageFromArray(seg)
 
@@ -410,21 +411,21 @@ def home_page():
                 <div class="card_image"> <img src="data:image/png;base64,{accuracy_img}" /> </div>
                 <div class="card_title">
                     Accuracy
-                    <div class="card-subtitle">Accurate segmentation for targeted treatment</div>
+                    <!--<div class="card-subtitle">Accurate segmentation for targeted treatment</div>-->
                 </div>
             </div>
             <div class="card 1">
                 <div class="card_image"> <img src="data:image/png;base64,{speed_img}" /> </div>
                 <div class="card_title">
                     Speed
-                    <div class="card-subtitle">Efficient brain tumor segmentation for faster diagnosis</div>
+                    <!--<div class="card-subtitle">Efficient brain tumor segmentation for faster diagnosis</div>-->
                 </div>
             </div>
             <div class="card 1">
                 <div class="card_image"> <img src="data:image/png;base64,{ease_img}" /> </div>
                 <div class="card_title">
                     Ease
-                    <div class="card-subtitle">Effortless segmentation with one button click</div>
+                    <!--<div class="card-subtitle">Effortless segmentation with one button click</div>-->
                 </div>
             </div>
             
@@ -883,13 +884,13 @@ def home_page():
             margin-left: 2.5rem
         }
     </style>""", unsafe_allow_html=True)
-    # padding = 0
-    # st.markdown(f"""
-    #     <style>
-    #         .reportview-container .main .block-container{{
-    #         padding-top: {padding}rem;
-    #         padding-right: {padding}rem;
-    #         padding-left: {padding}rem;
-    #         padding-bottom: {padding}rem;
+    padding = 0
+    st.markdown(f"""
+        <style>
+            .reportview-container .main .block-container{{
+            padding-top: {padding}rem;
+            padding-right: {padding}rem;
+            padding-left: {padding}rem;
+            padding-bottom: {padding}rem;
 
-    #     }} </style> """, unsafe_allow_html=True)
+        }} </style> """, unsafe_allow_html=True)

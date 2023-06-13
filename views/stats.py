@@ -280,7 +280,7 @@ def stats_page():
                     if not os.path.exists(f"uploads/{selected_patient[0]}/results/reports"):
                         # st.session_state["reported"] = False
                         os.makedirs(
-                            f"uploads/{selected_patient[0]}/reports")
+                            f"uploads/{selected_patient[0]}/results/reports")
                         pdf = FPDF()
 
                         # Add a page

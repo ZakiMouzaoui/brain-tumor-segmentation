@@ -539,21 +539,6 @@ def view_all_patients():
     return result
 
 
-# def get_pending_requests():
-
-#     c.execute(f"""SELECT p.id, p.name, p.sex, p.age, p.tumor, u.id, u.name, p.created_at FROM patients p
-#                 JOIN users u ON p.user_id = u.id WHERE p.req_status == -1
-#                 """)
-#     result = c.fetchall()
-#     return result
-
-
-# def approve_deny_request(id, val):
-#     c.execute(f"""UPDATE patients SET req_status = {val} WHERE id = {id}
-#                 """)
-#     conn.commit()
-
-
 def delete_patients():
     conn = sqlite3.connect('data.db')
     c = conn.cursor()
@@ -832,7 +817,7 @@ def get_appointments():
         SELECT a.id, p.name, d.name, a.date, a.status
         FROM appointment a
         JOIN patients p ON a.patient_id = p.user_id
-        JOIN users d ON a.doctor_id = d.id
+        JOIN users d ON a.doctor_id = d.id WHERE a.status <> 0 OR a.date >= CURRENT_DATE
     """)
 
     data = c.fetchall()
@@ -851,7 +836,7 @@ def get_appointments_for_doctor(doctor_id):
         FROM appointment a
         JOIN patients p ON a.patient_id = p.user_id
         JOIN users d ON a.doctor_id = d.id
-        WHERE d.id = ?
+        WHERE d.id = ? AND (a.status <> 0 OR a.date >= CURRENT_DATE)
     """, (doctor_id, ))
 
     data = c.fetchall()

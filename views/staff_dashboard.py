@@ -104,6 +104,7 @@ def staff_dashboard():
     patients = st.session_state["patients"]
     appointments = st.session_state["staff-appointments"]
     users = list(filter(lambda x: x[4] == 1, users))
+    filtered_appointments = appointments.copy()
 
     st.markdown("<h1 style='text-align: center'>Dashboard</h1>",
                 unsafe_allow_html=True)
@@ -411,16 +412,16 @@ def staff_dashboard():
         with _:
             filter_ = st.selectbox("Filter appointments", options=[
                 -1, 0, 1, 2], format_func=lambda x: "Pending" if x == 0 else "Confirmed" if x == 1 else "Canceled" if x == 2 else "All")
-            appointments = filter_appointments(appointments, filter_)
+            filtered_appointments = filter_appointments(
+                filtered_appointments, filter_)
 
-        appointments_df = pd.DataFrame(appointments, columns=[
+        appointments_df = pd.DataFrame(filtered_appointments, columns=[
                                        "Id", "Patient", "Doctor", "Date", "Status", ])
         appointments_df["Status"] = appointments_df["Status"].replace(
             {0: 'Pending', 1: 'Confirmed', 2: "Canceled"})
         appointments_df = appointments_df.style.set_properties(
             **{'text-align': 'left'}).set_table_styles(styles)
 
-        st.subheader("appointments")
         st.table(appointments_df)
     with col2:
         st.subheader("Create an appointment")

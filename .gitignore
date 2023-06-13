@@ -1,7 +1,12 @@
 data.db
-uploads
-temp
+uploads/
+temp/
 requirements.txt
 .streamlit
-models
+models/
 .env
+.streamlit/
+.vscode/
+assets/
+.ipynb_checkpoints
+views/__pycache__

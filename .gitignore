@@ -9,4 +9,6 @@ models/
 .vscode/
 assets/
 .ipynb_checkpoints
-views/__pycache__
+db_manager.py
+.vscode/*
+!.vscode/settings.json

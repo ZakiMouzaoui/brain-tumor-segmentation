@@ -1,0 +1,26 @@
+antspynet==0.2.1
+antspyx==0.3.8
+dicom2nifti==2.4.8
+keras==2.11.0
+matplotlib==3.5.1
+nibabel==5.1.0
+numpy==1.23.5
+# numpy==1.23.0
+pandas==1.5.3
+# Pillow==9.0.1
+Pillow==9.5.0
+#pyradiomics==3.0.1
+python_bcrypt==0.3.2
+scikit_image==0.19.3
+SimpleITK==2.2.1
+streamlit==1.21.0
+streamlit_card==0.0.4
+streamlit_cookies_manager==0.2.0
+streamlit_extras==0.2.7
+streamlit_lottie==0.0.3
+streamlit_nested_layout==0.1.1
+streamlit_option_menu==0.3.4
+streamlit-cookies-manager
+python-dotenv==1.0.0
+toml==0.10.2
+# opencv==4.7.0

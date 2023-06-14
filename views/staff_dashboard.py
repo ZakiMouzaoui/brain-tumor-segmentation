@@ -1,6 +1,5 @@
 import base64
 import datetime
-import time
 from db_manager import (
     retrieve_users, view_all_patients,
     add_history,

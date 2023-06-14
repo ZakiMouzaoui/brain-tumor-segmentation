@@ -1,11 +1,5 @@
-import datetime
-import time
 import streamlit as st
 from db_manager import get_history, delete_activities
-from streamlit_card import card
-import pandas as pd
-from st_aggrid import AgGrid, ColumnsAutoSizeMode, GridUpdateMode
-from st_aggrid.grid_options_builder import GridOptionsBuilder
 
 
 def history_page():

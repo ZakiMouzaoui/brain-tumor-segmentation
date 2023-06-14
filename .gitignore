@@ -1,7 +1,6 @@
 data.db
 uploads/
 temp/
-requirements.txt
 .streamlit/
 models/
 .env

@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 import time
 from db_manager import authenticate_user, generate_password_reset_token, send_password_reset_email
 import streamlit as st
@@ -6,10 +5,7 @@ import json
 from streamlit_lottie import st_lottie
 import re
 from streamlit_extras.switch_page_button import switch_page
-import jwt
-import os
 from dotenv import load_dotenv
-from streamlit_cookies_manager import EncryptedCookieManager
 
 
 def auth_page(cookies):
@@ -22,19 +18,19 @@ def auth_page(cookies):
         regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
         return re.fullmatch(regex, email)
 
-    # Generate JWT token
-    def generate_jwt_token(id, username, role, picture):
-        jwt_secret = os.getenv('JWT_SECRET_KEY')
+    # # Generate JWT token
+    # def generate_jwt_token(id, username, role, picture):
+    #     jwt_secret = os.getenv('JWT_SECRET_KEY')
 
-        payload = {
-            "id": id,
-            "username": username,
-            "role": role,
-            "picture": picture,
-            "exp": datetime.utcnow() + timedelta(hours=1)  # Token expiration time
-        }
-        token = jwt.encode(payload, jwt_secret, algorithm="HS256")
-        return token
+    #     payload = {
+    #         "id": id,
+    #         "username": username,
+    #         "role": role,
+    #         "picture": picture,
+    #         "exp": datetime.utcnow() + timedelta(hours=1)  # Token expiration time
+    #     }
+    #     token = jwt.encode(payload, jwt_secret, algorithm="HS256")
+    #     return token
 
     lottie_json = load_lottie("assets/anim-doctor.json")
 
@@ -84,7 +80,6 @@ def auth_page(cookies):
                             # token = generate_jwt_token(
                             #     st.session_state["user_id"], st.session_state["user_name"], st.session_state["role"], st.session_state["user_pic"])
                             if keep_me:
-                                st.write("keep me")
                                 cookies["remember_me"] = "1"
                                 cookies["email"] = email
                                 cookies["password"] = password

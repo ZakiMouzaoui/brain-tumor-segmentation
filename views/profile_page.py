@@ -1,13 +1,9 @@
-from datetime import datetime, timedelta
 import shutil
 import streamlit as st
 from db_manager import change_password, change_profile_pic
 import time
 from PIL import Image
 import os
-import jwt
-import os
-from dotenv import load_dotenv
 
 
 def profile_page(cookies):

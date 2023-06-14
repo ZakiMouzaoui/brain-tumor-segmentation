@@ -6,9 +6,7 @@ requirements.txt
 models/
 .env
 .streamlit/
-.vscode/
+.vscode
 assets/
 .ipynb_checkpoints
 db_manager.py
-.vscode/*
-!.vscode/settings.json

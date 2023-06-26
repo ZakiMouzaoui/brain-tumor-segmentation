@@ -21,28 +21,6 @@ def staff_dashboard():
     def check_valid_appointment_date(date):
         return date >= datetime.date.today()
 
-    # def retrieve_users_(order_col, order_type):
-
-    #     n = retrieve_users()
-    #     items_per_page = 3
-
-    #     # Calculate the total number of pages
-    #     total_pages = n // items_per_page
-
-    #     if n % items_per_page != 0:
-    #         total_pages += 1
-
-    #     # Initialize the current page
-    #     current_page = st.session_state["current_page"]
-    #     start_index = (current_page - 1) * items_per_page
-
-    #     users = paginate_users(order_col, order_type,
-    #                            items_per_page, start_index)
-    #     st.session_state["users"] = users
-    #     st.session_state["total_pages"] = total_pages
-
-    #     return users
-
     def retrieve_users_():
         users = retrieve_users()
         return users
@@ -82,24 +60,9 @@ def staff_dashboard():
         return base64.b64encode(data).decode()
 
     if not "staff-appointments" in st.session_state:
-        # st.session_state["order_user"] = "Name (A-Z)"
-        # st.session_state["order_col_user"] = "name"
-        # st.session_state["order_type_user"] = "ASC"
-
-        # st.session_state["order_patient"] = "Name (A-Z)"
-        # st.session_state["order_col_patient"] = "name"
-        # st.session_state["order_type_patient"] = "ASC"
-
-        # st.session_state["current_page"] = 1
         st.session_state["users"] = retrieve_users_()
         st.session_state["patients"] = view_all_patients()
     st.session_state["staff-appointments"] = retrieve_appointments()
-
-    # retrieve_users_(
-    #     st.session_state["order_col_user"], st.session_state["order_type_user"])
-    # retrieve_patients_(
-    #     st.session_state["order_col_patient"], st.session_state["order_type_patient"])
-    # retrieve_appointments()
 
     users = st.session_state["users"]
     patients = st.session_state["patients"]
@@ -109,32 +72,6 @@ def staff_dashboard():
 
     st.markdown("<h1 style='text-align: center'>Dashboard</h1>",
                 unsafe_allow_html=True)
-
-    # col1, col2, col3 = st.columns(3)
-
-    # with col1:
-    #     card(
-    #         title="Doctors",
-    #         text=f"{len(users)}",
-    #         image="https://img.freepik.com/premium-vector/avatar-male-doctor-with-black-hair-beard-doctor-with-stethoscope-vector-illustrationxa_276184-32.jpg?w=2000",
-    #         url=""
-    #     )
-
-    # with col2:
-    #     card(
-    #         title="Patients",
-    #         text=f"{len(patients)}",
-    #         image="https://cdn3.iconfinder.com/data/icons/corona-pandemic-disease/512/005-patient-512.png",
-    #         url="",
-    #     )
-
-    # with col3:
-    #     card(
-    #         title="Appointments",
-    #         text=f"{len(appointments)}",
-    #         image="https://static.vecteezy.com/system/resources/previews/003/738/383/original/appointment-date-icon-free-vector.jpg",
-    #         url="",
-    #     )
 
     doctor_img = get_base64_doctor("assets/doctor_icon.png")
     patient_img = get_base64_patient("assets/patient_icon.png")

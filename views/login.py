@@ -20,20 +20,6 @@ def auth_page(cookies):
     def is_matching_passwords(pwd1, pwd2):
         return pwd1 == pwd2
 
-    # # Generate JWT token
-    # def generate_jwt_token(id, username, role, picture):
-    #     jwt_secret = os.getenv('JWT_SECRET_KEY')
-
-    #     payload = {
-    #         "id": id,
-    #         "username": username,
-    #         "role": role,
-    #         "picture": picture,
-    #         "exp": datetime.utcnow() + timedelta(hours=1)  # Token expiration time
-    #     }
-    #     token = jwt.encode(payload, jwt_secret, algorithm="HS256")
-    #     return token
-
     lottie_json = load_lottie("assets/anim-doctor.json")
 
     st.set_option('deprecation.showPyplotGlobalUse', False)
@@ -153,28 +139,3 @@ def auth_page(cookies):
                                 time.sleep(1.5)
                                 success.empty()
                                 st.session_state["Resetting"] = False
-
-    # with col2:
-    #     with st.form("signup-form"):
-    #         name = st.text_input("Name")
-    #         email = st.text_input("Email")
-    #         pwd1 = st.text_input("Password", type="password")
-    #         pwd2 = st.text_input("Confirm Password", type="password")
-    #         signup = st.form_submit_button("Sign Up")
-
-    #         if signup:
-    #             if not email or not name or not pwd1:
-    #                 st.error("All fields are required")
-    #             else:
-    #                 if not validate_email(email):
-    #                         st.error("Enter a valid email")
-    #                 else:
-    #                     if not confirm_password(pwd1, pwd2):
-    #                         st.error("Passwords are not matching")
-    #                     else:
-    #                         email_exists = check_email_exists(email)
-    #                         if email_exists:
-    #                             st.error("Email already exists")
-    #                         else:
-    #                             create_user(name, email, password)
-    #                             st.success("Thank you for your registration")

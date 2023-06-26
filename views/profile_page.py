@@ -63,18 +63,6 @@ def profile_page(cookies):
             # cookies["user_pic"] = path
             change_profile_pic(user_id, path)
             cookies["user_pic"] = path
-            # load_dotenv()
-            # jwt_secret = os.getenv('JWT_SECRET_KEY')
-
-            # payload = {
-            #     "id": st.session_state["user_id"],
-            #     "username": st.session_state["user_name"],
-            #     "role": st.session_state["role"],
-            #     "picture": path,
-            #     "exp": datetime.utcnow() + timedelta(hours=1)  # Token expiration time
-            # }
-            # token = jwt.encode(payload, jwt_secret, algorithm="HS256")
-            # st.experimental_set_query_params(uid=token)
             st.experimental_rerun()
             success = st.success("Image changed successfully")
             time.sleep(1.5)

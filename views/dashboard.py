@@ -94,30 +94,6 @@ def dashboard_page():
 
     col1, col2, col3, col4 = st.columns(4)
 
-    # with col1:
-    #     card(
-    #         title="Doctors",
-    #         text=f"{len(doctors)}",
-    #         image="https://img.freepik.com/premium-vector/avatar-male-doctor-with-black-hair-beard-doctor-with-stethoscope-vector-illustrationxa_276184-32.jpg?w=2000",
-    #         url=""
-    #     )
-
-    # with col2:
-    #     card(
-    #         title="Staffs",
-    #         text=f"{len(staffs)}",
-    #         image="https://banner2.cleanpng.com/20191121/lkg/transparent-staff-icon-hotel-icon-service-icon-5dd63a2248cce4.9645499215743206742982.jpg",
-    #         url=""
-    #     )
-
-    # with col3:
-    #     card(
-    #         title="Patients",
-    #         text=f"{len(patients)}",
-    #         image="https://cdn3.iconfinder.com/data/icons/corona-pandemic-disease/512/005-patient-512.png",
-    #         url="",
-    #     )
-
     new_messages = list(filter(lambda x: x[5] == 0, all_messages))
     seen_messages = list(filter(lambda x: x[5] == 1, all_messages))
 
@@ -225,76 +201,6 @@ def dashboard_page():
         </style>
     ''', unsafe_allow_html=True)
 
-    # with col4:
-    #     card(
-    #         title="New Messages",
-    #         text=f"{len(new_messages)}",
-    #         image="https://img.uxwing.com/wp-content/themes/uxwing/download/communication-chat-call/text-message-icon.png",
-    #         url=""
-    #     )
-#     st.markdown("""
-#         <div class="card">
-#         <h2 class="card-title">Doctors</h2>
-#         <h3 class="card-subtitle">2</h3>
-#         <img class="card-image" src="https://cdn-icons-png.flaticon.com/512/3774/3774299.png" alt="Image 1">
-#     </div>
-
-#     <div class="card">
-#         <h2 class="card-title">Staffs</h2>
-#         <h3 class="card-subtitle">1</h3>
-#         <img class="card-image" src="https://cdn-icons-png.flaticon.com/512/3461/3461573.png" alt="Image 2">
-#     </div>
-
-#     <div class="card">
-#         <h2 class="card-title">Patients</h2>
-#         <h3 class="card-subtitle">4</h3>
-#         <img class="card-image" src="https://cdn3.iconfinder.com/data/icons/corona-pandemic-disease/512/005-patient-512.png" alt="Image 3">
-#     </div>
-
-#     <div class="card">
-#         <h2 class="card-title">New messages</h2>
-#         <h3 class="card-subtitle">2</h3>
-#         <img class="card-image" src="https://icons-for-free.com/iconfiles/png/512/inbox+message+one+message+icon-1320166594682862187.png" alt="Image 4">
-#     </div>
-#     """, unsafe_allow_html=True)
-#     st.markdown("""
-#         <style>
-#     .card {
-#       display: inline-block;
-#       width: 22.8%;
-#       margin: 0.95%;
-#       padding: 1%;
-#       border-radius: 5px;
-#       border: 1px solid #ddd;
-#       position: relative;
-#     }
-
-#     .card-title {
-#       font-size: 1.5rem;
-#       font-weight: bold;
-#       margin-bottom: 5px;
-#     }
-
-#     .card-subtitle {
-#       font-size: 1.2rem;
-#       color: #666;
-#       margin-bottom: 10px;
-#     }
-
-#     .card-image {
-#       position: absolute;
-#       top: 0;
-#       right: 0;
-#       width: 30%;
-#       margin-top:10%;
-#       margin-right: 5%;
-#       border-radius: 5px;
-#       height: 50;
-#       width:50;
-#     }
-#   </style>
-#     """, unsafe_allow_html=True)
-
     cc1, cc2 = st.columns(2)
     paginated_users = users.copy()
     paginated_patients = patients.copy()
@@ -377,58 +283,6 @@ def dashboard_page():
                     idx = idx + 1
                     st.session_state["users-idx"] = idx
                     st.experimental_rerun()
-
-        # with co1:
-        #     cc_1, cc_2, cc_3 = st.columns(3)
-        #     current_page = st.session_state["current_page"]
-        #     total_pages = st.session_state["total_pages"]
-
-        #     with cc_1:
-        #         if current_page > 1:
-        #             if st.button("Previous"):
-        #                 current_page -= 1
-        #                 st.session_state["current_page"] = current_page
-        #                 st.experimental_rerun()
-        #         else:
-        #             st.button("Previous", disabled=True)
-
-        #     with cc_2:
-        #         st.write(f"Page {current_page} of {total_pages}")
-        #     with cc_3:
-        #         if current_page < total_pages:
-        #             if st.button("Next"):
-        #                 current_page += 1
-        #                 st.session_state["current_page"] = current_page
-        #                 st.experimental_rerun()
-        #         else:
-        #             st.button("Next", disabled=True)
-
-        # retrieve_users_(st.session_state["order_col_user"], st.session_state["order_type_user"])
-
-        # custom_css = {
-        #     ".ag-row": {"font-size": "1rem !important"},
-        #     ".ag-header-cell-label": {"font-size": "1rem !important"}
-        # }
-
-        # df  = pd.DataFrame(users, columns=["Id", "Name", "Sex", "Email", "Status", "Joining date"])
-        # gd = GridOptionsBuilder.from_dataframe(users_df)
-        # gd.configure_pagination(enabled=True)
-        # gd.configure_selection(selection_mode="multiple", use_checkbox=True)
-        # gd.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=2)
-        # gridOptions = gd.build()
-
-        # AgGrid(
-        #     users_df, gridOptions=gridOptions,
-        #     columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS,
-        #     custom_css=custom_css, update_mode=GridUpdateMode.MODEL_CHANGED,
-        #     key="user-aggrid"
-        #     )
-
-        # with column2:
-        #     for i in range(6):
-        #         st.markdown(" ")
-        #     csv_file = st.file_uploader("Or import a csv file", type=["csv"])
-        #     confirm = st.button("Confirm", disabled=csv_file is None)
     with cc2:
         # patients = retrieve_patients_(st.session_state["order_col_patient"], st.session_state["order_type_patient"])
         _, __ = st.columns(2)
@@ -486,16 +340,6 @@ def dashboard_page():
                     patient_idx += 1
                     st.session_state["patients-idx"] = patient_idx
                     st.experimental_rerun()
-
-    # st.divider()
-    # co1, _ = st.columns(2)
-    # with co1:
-    #     requests_df = pd.DataFrame(requests, columns=["Id","Name", "Sex", "Age", "Tumor", "user_id", "Requested by", "Date"])
-    #     requests_df.drop("user_id", inplace=True, axis=1)
-    #     #requests_df = requests_df.style.set_properties(**{'text-align': 'left'}).set_table_styles(styles)
-
-    #     st.subheader("Pending requests")
-    #     st.table(requests_df)
 
     st.divider()
     c1, c2, c3 = st.columns(3)
@@ -622,16 +466,6 @@ def dashboard_page():
                                 delete_single_message(new_message[0])
                                 retrieve_messages()
                                 st.experimental_rerun()
-            # with col2:
-            #     c1, c2 = st.columns(2)
-
-            #     with c1:
-            #         is_read = message[5] == 1
-            #         read_btn = st.button("Mark as read", key=f'read_btn {message[0]}', disabled=is_read)
-            #         if read_btn:
-            #             mark_as_read(message[0])
-            #             retrieve_messages()
-            #             st.experimental_rerun()
     with co2:
         st.subheader("Seen messages")
         if not seen_messages:
@@ -675,24 +509,3 @@ def dashboard_page():
     col1, col2 = st.columns(2)
     with col1:
         st.table(ratings_df)
-    # st.markdown('''
-    #         <style>
-    #             div[data-testid="stMarkdownContainer"] > p {
-
-    #                 font-size: 1.4rem;
-    #             }
-    #             .message-title > span{
-    #                 text-decoration: underline;
-    #                 color: #265B94
-    #             }
-
-    #         </style>
-    #     ''', unsafe_allow_html=True)
-    # st.markdown("""
-    # <style>
-    #     p{
-    #         font-size: 2rem;
-    #         font-weight: bold;
-    #     }
-    #     </style>
-    # """, unsafe_allow_html=True)

@@ -64,31 +64,3 @@ def history_page():
                 st.session_state["all-checked"] = False
                 ids = []
                 st.experimental_rerun()
-                # success = st.success("History deleted successfully")
-                # time.sleep(1.5)
-                # success.empty()
-
-    # df  = pd.DataFrame(activities, columns=["Id", "Activity", "Date"])
-    # df.drop("Id", inplace=True, axis=1)
-    # gd = GridOptionsBuilder.from_dataframe(df)
-    # gd.configure_pagination(enabled=True)
-    # gd.configure_selection(selection_mode="multiple", use_checkbox=True)
-    # gd.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=2)
-    # gridOptions = gd.build()
-
-    # custom_css = {
-    #         ".ag-row": {"font-size": "1rem !important"},
-    #         ".ag-header-cell-label": {"font-size": "1rem !important", "padding": "1em"},
-    #         ".ag-root.ag-unselectable.ag-layout-normal": {
-    #             "padding": "1rem"
-    #         }
-    #     }
-
-    # _, __ = st.columns(2)
-    # with _:
-    #     AgGrid(
-    #         df, gridOptions=gridOptions,
-    #         columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS,
-    #         custom_css=custom_css, update_mode=GridUpdateMode.MODEL_CHANGED,
-    #         key="user-aggrid"
-    #     )

@@ -79,10 +79,6 @@ def stats_page():
                 unsafe_allow_html=True)
     st.markdown(" ")
 
-    # if not "appointments" in st.session_state or st.session_state["appointments"] is None:
-    #     appointments = retrieve_appointments()
-    #     st.session_state["appointments"] = appointments
-
     st.session_state["appointments"] = retrieve_appointments()
     get_medical_records_()
 

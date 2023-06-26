@@ -88,19 +88,6 @@ def home_page():
             open("models/extractor.pkl", "rb"))
         return extractor
 
-    # # # Replace with the path to the parent folder
-    # folder_path = '/home/zaki/Downloads/archive/MICCAI_BraTS_2019_Data_Training/LGG'
-
-    # for folder_name in os.listdir(folder_path):
-    #     folder_dir = os.path.join(folder_path, folder_name)
-    #     if os.path.isdir(folder_dir):
-    #         for filename in os.listdir(folder_dir):
-    #             file_path = os.path.join(folder_dir, filename)
-    #             # Modify the renaming pattern as needed
-    #             new_filename = filename.replace('.nii', '_l.nii')
-    #             new_file_path = os.path.join(folder_dir, new_filename)
-    #             os.rename(file_path, new_file_path)
-
     def classify_tumor(model, sequ):
         seg = st.session_state["prediction"].transpose((2, 1, 0))
         extractor = load_extractor()
@@ -183,12 +170,6 @@ def home_page():
         }
         pred = model.predict(test_scaled)[0]
 
-        if st.session_state["file_format"] == "NIFTI":
-            if st.session_state["file_extension"] == "l":
-                pred = -1
-            else:
-                pred = 1
-            st.session_state["file_extension"]
         return (pred, test_df, tumor_infos)
 
     @st.cache_data
@@ -239,8 +220,6 @@ def home_page():
     def plot_seg(seq_, cmap_val="viridis"):
         seg = st.session_state["prediction"]
 
-        # seq_ = cv2.resize(seq_[:, :, :], (240, 240))
-
         if st.session_state["file_format"] == "DICOM":
             angle = 90
         else:
@@ -264,17 +243,13 @@ def home_page():
 
                 axes[i, j].axis("off")
                 idx += 1
-
-        # legend_patches = [Patch(color=cmap(
-        #     i / (len(class_labels) - 1)), label=label) for i, label in enumerate(class_labels)]
-        # plt.legend(handles=legend_patches, loc="upper right", fontsize=6.5)
         return fig
 
     def skull_strip(path, modality):
         ants_image = ants.image_read(path)
         brain_mask = brain_extraction(
             ants_image, verbose=False, modality=modality)
-        # brain_mask = ants.get_mask(brain_mask, low_thresh=0.5)
+
         result = ants.mask_image(ants_image, brain_mask)
 
         return result
@@ -397,30 +372,6 @@ def home_page():
     st.markdown("<h1 style='text-align: center'>Brain AI</h1>",
                 unsafe_allow_html=True)
 
-    # col1, col2, col3 = st.columns(3)
-    # with col1:
-    #     card(
-    #         title="Accuracy",
-    #         text="Accurate segmentation for targeted treatment",
-    #         image="https://i0.wp.com/statisticsbyjim.com/wp-content/uploads/2021/09/target.png?resize=300%2C291&ssl=1",
-    #         url=""
-    #     )
-
-    # with col2:
-    #     card(
-    #         title="Speed",
-    #         text="Efficient brain tumor segmentation for faster diagnosis",
-    #         image="https://storage.googleapis.com/aliz-website-sandbox-strapi-cms/Customer_experience_cb479609da/Customer_experience_cb479609da.png",
-    #         url=""
-    #     )
-
-    # with col3:
-    #     card(
-    #         title="Ease",
-    #         text="Effortless segmentation with one button click",
-    #         image="https://media.istockphoto.com/id/1172207434/vector/click-here-the-button.jpg?s=612x612&w=0&k=20&c=uszvKX_5Sc0jKPq4jiMNbEgK7EOC3XFg-J6BsDsfwcE=",
-    #         url=""
-    #     )
     accuracy_img = get_base64_img1("assets/accuracy.png")
     speed_img = get_base64_img2("assets/speed.png")
     ease_img = get_base64_img3("assets/ease.png")
@@ -911,10 +862,3 @@ def home_page():
                         if cancel:
                             st.session_state["show_rating"] = False
                             st.experimental_rerun()
-
-    # st.markdown("""<style>
-    #     h4{
-    #         margin-top: -1rem;
-    #         margin-left: 2.5rem
-    #     }
-    # </style>""", unsafe_allow_html=True)

@@ -5,7 +5,6 @@ import toml
 from dotenv import load_dotenv
 import os
 from streamlit_cookies_manager import EncryptedCookieManager
-import views
 
 
 def change_theme(config, theme):
@@ -13,35 +12,22 @@ def change_theme(config, theme):
     config['theme']["primaryColor"] = "#265B94"
     with open('.streamlit/config.toml', 'w') as file:
         toml.dump(config, file)
+        file.close()
 
 
 load_dotenv()
 
 
-# def verify_jwt_token(token):
-#     try:
-#         payload = jwt.decode(token, os.getenv(
-#             "JWT_SECRET_KEY"), algorithms=["HS256"])
-#         return payload
-#     except jwt.ExpiredSignatureError:
-#         return None  # Token has expired
-#     except jwt.InvalidTokenError:
-#         return None  # Invalid token
+@st.cache_data(show_spinner=False)
+def get_cookies_secret():
+
+    prefix = "brain-ai-cookies/"
+    password = os.getenv("COOKIES_PASSWORD")
+
+    return (prefix, password)
 
 
 st.set_page_config(page_title='Brain AI', page_icon="🧠", layout="wide")
-
-st.markdown("""
-
-        <style>
-        .css-15zrgzn {display: none}
-        .css-eczf16 {display: none}
-        .css-jn99sy {display: none}
-        div[data-testid="stMarkdownContainer"] > p{
-                font-size:1.2rem
-        }
-        </style>
-        """, unsafe_allow_html=True)
 
 
 def get_base64_of_bin_file(bin_file):
@@ -53,11 +39,14 @@ def get_base64_of_bin_file(bin_file):
 if not "theme" in st.session_state:
     with open('.streamlit/config.toml', 'r') as file:
         config = toml.load(file)
+        file.close()
     st.session_state["theme"] = config["theme"]["base"]
     st.session_state["config"] = config
 
 
 def get_cookies():
+    # creds = get_cookies_secret()
+
     cookies = EncryptedCookieManager(
         prefix="brain-ai-cookies/",
         password=os.getenv("COOKIES_PASSWORD"),
@@ -71,20 +60,6 @@ def get_cookies():
 cookies = get_cookies()
 
 if not "authenticated" in st.session_state or st.session_state["authenticated"] is None:
-    # token = verify_jwt_token(
-    #     st.experimental_get_query_params().get("uid", [None])[0])
-
-    # if not token:
-    #     st.session_state["authenticated"] = False
-    # else:
-    #     st.session_state["authenticated"] = True
-    #     st.session_state["user_id"] = token["id"]
-    #     st.session_state["doctor_patients"] = []
-    #     st.session_state["prediction"] = None
-    #     st.session_state["role"] = token["role"]
-    #     st.session_state["user_name"] = token["username"]
-    #     st.session_state["user_pic"] = token["picture"]
-
     if not "user_id" in cookies or cookies["user_id"] == "-1":
         st.session_state["authenticated"] = False
     else:
@@ -94,6 +69,18 @@ if not "authenticated" in st.session_state or st.session_state["authenticated"] 
         st.session_state["user_name"] = cookies["user_name"]
         st.session_state["user_pic"] = cookies["user_pic"]
         st.session_state["email"] = cookies["email"]
+
+st.write(f"""
+        <style>
+         .css-15zrgzn {{display: none}}
+        .css-eczf16 {{display: none}}
+        .css-jn99sy {{display: none}}
+        div[data-testid="stMarkdownContainer"] > p{{
+                    font-size:1.2rem
+            }}
+            
+        </style>
+    """, unsafe_allow_html=True)
 
 pages_ = []
 icons_ = []
@@ -162,6 +149,7 @@ with st.sidebar:
                     cookies["user_id"] = "-1"
 
                     st.session_state["authenticated"] = None
+                    st.session_state["doctor-patients"] = None
                     st.session_state["patients-order"] = None
                     st.experimental_set_query_params()
                     st.experimental_rerun()
@@ -209,12 +197,12 @@ else:
         appointments.appointments_page()
 
 padding = 0
-st.markdown(f"""
-        <style>
-            .reportview-container .main .block-container{{
-            padding-top: {padding}rem;
-            padding-right: {padding}rem;
-            padding-left: {padding}rem;
-            padding-bottom: {padding}rem;
+# st.markdown(f"""
+#         <style>
+#             .reportview-container .main .block-container{{
+#             padding-top: {padding}rem;
+#             padding-right: {padding}rem;
+#             padding-left: {padding}rem;
+#             padding-bottom: {padding}rem;
 
-        }} </style> """, unsafe_allow_html=True)
+#         }} </style> """, unsafe_allow_html=True)

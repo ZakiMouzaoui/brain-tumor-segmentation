@@ -70,7 +70,8 @@ def appointments_page():
 
     if not "patient_records" in st.session_state:
         get_medical_records()
-        retrieve_appointments()
+
+    retrieve_appointments()
 
     records = st.session_state["patient_records"]
     appointments = st.session_state["appointments"]
@@ -132,6 +133,7 @@ def appointments_page():
         #             unsafe_allow_html=True)
         for i in range(4):
             st.markdown(" ")
+
         if records[3] == "HGG":
             type = "High Grade Glioma"
         else:
@@ -192,7 +194,7 @@ def appointments_page():
 
                         </style>
                     ''', unsafe_allow_html=True)
-        col1, col2, col3 = st.columns(3)
+        col1, col2, _ = st.columns(3)
         with col2:
             if not os.path.exists(f"uploads/{id}/results/reports"):
                 # st.session_state["reported"] = False
@@ -232,29 +234,34 @@ def appointments_page():
             )
 
     st.divider()
-    col1, col2, col3 = st.columns([2, 1, 1])
+    col1, col2 = st.columns(2)
     with col1:
-        st.subheader("appointments")
+        st.subheader("Appointments")
         st.table(appointments_df)
-    with col2:
-        st.subheader("Confirm / Cancel")
-        filtered = list(filter(lambda x: x[-1] == 0, appointments))
-        if filtered:
-            with st.form("cancel-confirm"):
-                selected = st.selectbox(
-                    "Select an appointment", options=filtered, format_func=lambda x: f'Appointment #{x[0]}')
-                st.text_input("Doctor name", value=selected[1], disabled=True)
-                st.text_input("Date", value=selected[2], disabled=True)
 
-                option = st.radio("_", options=["Confirm", "Cancel"],
-                                  horizontal=True, label_visibility="collapsed")
-                if option == "Confirm":
-                    val = 1
-                else:
-                    val = 2
-                submit = st.form_submit_button("Submit")
-                if submit:
-                    edit_appointment(selected[0], val)
-                    retrieve_appointments()
-        else:
-            st.write("No pending appointments")
+    with col2:
+        _, __, _ = st.columns([1, 4, 1])
+        with __:
+            st.subheader("Confirm / Cancel")
+            filtered = list(filter(lambda x: x[-1] == 0, appointments))
+            if filtered:
+                with st.form("cancel-confirm"):
+                    selected = st.selectbox(
+                        "Select an appointment", options=filtered, format_func=lambda x: f'Appointment #{x[0]}')
+                    st.text_input(
+                        "Doctor name", value=selected[1], disabled=True)
+                    st.text_input("Date", value=selected[2], disabled=True)
+
+                    option = st.radio("_", options=["Confirm", "Cancel"],
+                                      horizontal=True, label_visibility="collapsed")
+                    if option == "Confirm":
+                        val = 1
+                    else:
+                        val = 2
+                    submit = st.form_submit_button("Submit")
+                    if submit:
+                        edit_appointment(selected[0], val)
+                        st.experimental_rerun()
+                        # retrieve_appointments()
+            else:
+                st.write("No pending appointments")

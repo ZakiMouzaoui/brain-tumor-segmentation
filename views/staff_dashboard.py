@@ -1,13 +1,15 @@
 import base64
 import datetime
 from db_manager import (
-    retrieve_users, view_all_patients,
+    retrieve_users,
+    view_all_patients,
     add_history,
     add_patient,
     edit_patient,
     delete_patient,
     add_appointment,
     get_appointments,
+    delete_appointment
 )
 import streamlit as st
 from streamlit_card import card
@@ -91,7 +93,7 @@ def staff_dashboard():
         # st.session_state["current_page"] = 1
         st.session_state["users"] = retrieve_users_()
         st.session_state["patients"] = view_all_patients()
-        st.session_state["staff-appointments"] = retrieve_appointments()
+    st.session_state["staff-appointments"] = retrieve_appointments()
 
     # retrieve_users_(
     #     st.session_state["order_col_user"], st.session_state["order_type_user"])
@@ -443,7 +445,7 @@ def staff_dashboard():
                     st.experimental_rerun()
             if "appointment-success" in st.session_state and st.session_state["appointment-success"] is not None:
                 st.session_state["appointment-success"] = None
-                st.success("Appointment added")
+                st.success("Appointment created")
     with col3:
         st.subheader("Delete an appointment")
         selected_appointment = st.selectbox(
@@ -452,14 +454,34 @@ def staff_dashboard():
             st.text_input("Patient", selected_appointment[1], disabled=True)
             st.text_input("Doctor", selected_appointment[2], disabled=True)
             st.text_input("Date", selected_appointment[3], disabled=True)
-            st.form_submit_button("Delete")
+            delete_appointment_btn = st.form_submit_button("Delete")
 
-    # st.markdown("""
-    #     <style>
-    #         button.css-19j7fr0.edgvbvh10{
-    #             background-color: #d11a2a;
-    #             border-color: #d11a2a;
-    #             color: white
-    #         }
-    #     </style>
-    # """, unsafe_allow_html=True)
+            if delete_appointment_btn:
+                delete_appointment(selected_appointment[0])
+                st.session_state["appointment-deleted"] = True
+                st.experimental_rerun()
+
+            if "appointment-deleted" in st.session_state and st.session_state["appointment-deleted"] is not None:
+                st.session_state["appointment-deleted"] = None
+                st.success("Appointment deleted")
+
+    if st.session_state["theme"] == "dark":
+        st.write('''
+                            <style>
+                                input:disabled, label{
+                                    -webkit-text-fill-color: white !important;
+
+                                }
+
+                            </style>
+                        ''', unsafe_allow_html=True)
+    else:
+        st.write('''
+                        <style>
+                            input:disabled, label{
+                                -webkit-text-fill-color: #31333F !important;
+
+                            }
+
+                        </style>
+                    ''', unsafe_allow_html=True)

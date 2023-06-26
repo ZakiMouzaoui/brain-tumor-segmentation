@@ -24,7 +24,6 @@ def history_page():
             "<h3 style='text-align: center'>Your history is empty 🗑️</h3>", unsafe_allow_html=True)
 
     else:
-
         c1, c2, c3 = st.columns(3)
         with c1:
             check_all = st.checkbox("", key="delete-all")

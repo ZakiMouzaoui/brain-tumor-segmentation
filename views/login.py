@@ -1,10 +1,9 @@
 import time
-from db_manager import authenticate_user, generate_password_reset_token, send_password_reset_email
+from db_manager import authenticate_user, generate_password_reset_token, send_password_reset_email, reset_password
 import streamlit as st
 import json
 from streamlit_lottie import st_lottie
 import re
-from streamlit_extras.switch_page_button import switch_page
 from dotenv import load_dotenv
 
 
@@ -17,6 +16,9 @@ def auth_page(cookies):
     def validate_email(email):
         regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
         return re.fullmatch(regex, email)
+
+    def is_matching_passwords(pwd1, pwd2):
+        return pwd1 == pwd2
 
     # # Generate JWT token
     # def generate_jwt_token(id, username, role, picture):
@@ -109,22 +111,48 @@ def auth_page(cookies):
                     elif not validate_email(email):
                         st.error("Enter a valid email")
                     else:
-                        token = generate_password_reset_token(email)
-                        with st.spinner("Sending ..."):
-                            sent = send_password_reset_email(email, token)
-                        if sent:
-                            success = st.success(
-                                "An email was sent to you. Click the button below to reset your password")
-                            time.sleep(2.5)
-                            success.empty()
-                            st.session_state["Resetting"] = True
+                        response = generate_password_reset_token(email)
+
+                        if response["status"] == "error":
+                            st.error(response["message"])
                         else:
-                            st.error("An error while sending the email")
+                            token = response["token"]
+                            with st.spinner("Sending ..."):
+                                sent = send_password_reset_email(
+                                    response["user"], email, token)
+                            if sent:
+                                success = st.success(
+                                    "An email with the reset link was sent to you")
+                                time.sleep(2.5)
+                                success.empty()
+                                st.session_state["Resetting"] = True
+                            else:
+                                st.error(
+                                    "There was an error while sending the email")
 
         if "Resetting" in st.session_state and st.session_state["Resetting"] == True:
-            reset = st.button('Reset password')
-            if reset:
-                switch_page("Reset Password")
+            reset = st.expander('Reset Password')
+            with reset:
+                with st.form("reset-password-form"):
+                    token = st.text_input("Token")
+                    password = st.text_input("Password", type='password')
+                    confirm_password = st.text_input(
+                        "Confirm password", type='password')
+                    reset_pwd = st.form_submit_button("Reset")
+                    if reset_pwd:
+                        if not token or not password or not confirm_password:
+                            st.error("All fields are required")
+                        elif not is_matching_passwords(password, confirm_password):
+                            st.error("Passwords are not matching")
+                        else:
+                            response = reset_password(token, password)
+                            if response["status"] == "error":
+                                st.error(response["message"])
+                            else:
+                                success = st.success(response["message"])
+                                time.sleep(1.5)
+                                success.empty()
+                                st.session_state["Resetting"] = False
 
     # with col2:
     #     with st.form("signup-form"):

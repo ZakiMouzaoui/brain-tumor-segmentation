@@ -1,4 +1,5 @@
 import glob
+import math
 import streamlit as st
 from db_manager import get_appointments_for_doctor, get_medical_records_for_doctor
 import pandas as pd
@@ -28,7 +29,6 @@ def stats_page():
         return res
 
     def plot_seg(format, sequence, segment, cmap_val="viridis"):
-        st.write(format)
         if format == "DICOM":
             angle = 90
             sequence = cv2.resize(sequence[:, :, :], (240, 240))
@@ -79,17 +79,18 @@ def stats_page():
                 unsafe_allow_html=True)
     st.markdown(" ")
 
-    if not "appointments" in st.session_state or st.session_state["appointments"] is None:
-        appointments = retrieve_appointments()
-        st.session_state["appointments"] = appointments
+    # if not "appointments" in st.session_state or st.session_state["appointments"] is None:
+    #     appointments = retrieve_appointments()
+    #     st.session_state["appointments"] = appointments
 
+    st.session_state["appointments"] = retrieve_appointments()
     get_medical_records_()
 
     col1, col2 = st.columns(2)
     patients = st.session_state["doctor-patients"]
     appointments = st.session_state["appointments"]
     records = st.session_state["medical_records"]
-
+    # st.write(records)
     with col1:
         _, __ = st.columns(2)
         with _:
@@ -178,11 +179,13 @@ def stats_page():
                 unsafe_allow_html=True)
     _, cc2, _ = st.columns([2, 1, 2])
     with cc2:
+
         selected_patient = st.selectbox(
-            "Select a patient", options=select_patients, label_visibility="collapsed", format_func=lambda x: x[1] if x[0] != "Select" else "Select")
+            "Select", options=select_patients, label_visibility="collapsed", format_func=lambda x: x[1] if x[0] != "Select" else "Select a patient")
     if selected_patient[0] != "Select":
         record = list(
             filter(lambda x: x[1] == selected_patient[0], records))
+
         if record:
             record = record[0]
 
@@ -191,9 +194,6 @@ def stats_page():
                 st.markdown(
                     "<h3 style='text-align:center'tumor>MRI results</h3>", unsafe_allow_html=True)
                 cc1, cc2 = st.columns(2)
-                # with cc1:
-                #     sequence = st.selectbox("Select a sequence", options=[
-                #                             "T1", "T1(gadolinium)", "T2", "FLAIR"])
                 with cc1:
                     cmap = st.selectbox("Select a color type", options=[
                                         "viridis", "rainbow", "ocean"], format_func=lambda x: 'Type1' if x == "viridis" else "Type2" if x == "rainbow" else "Type3")
@@ -202,7 +202,7 @@ def stats_page():
                 seq = nib.load(
                     glob.glob(f"uploads/{selected_patient[0]}/results/t2_nii/*")[0]).get_fdata()
                 fig = plot_seg(
-                    record[5],
+                    record[4],
                     seq,
                     nib.load(
                         f"uploads/{selected_patient[0]}/results/segmentation/segmentation.nii.gz").get_fdata(),
@@ -212,16 +212,15 @@ def stats_page():
             with co2:
                 st.markdown(
                     "<h3 style='text-align:center'tumor>Tumor informations</h3>", unsafe_allow_html=True)
-                # st.markdown("<div class='tumor-info'>",
-                #             unsafe_allow_html=True)
+
                 for i in range(4):
                     st.markdown(" ")
-                if record[3] == "HGG":
+                if record[2] == "HGG":
                     type = "High Grade Glioma"
                 else:
                     type = "Low Grade Glioma"
                 cc1, cc2 = st.columns(2)
-                d = json.loads(record[4])
+                d = json.loads(record[3])
                 keys_list = list(d.keys())
                 keys_list_1 = keys_list[:3]
                 keys_list_2 = keys_list[3:]
@@ -298,7 +297,7 @@ def stats_page():
                         pdf.cell(200, 10, txt=f"Tumor type : {type}",
                                  ln=1, align='C')
 
-                        for k, v in json.loads(record[4]).items():
+                        for k, v in json.loads(record[3]).items():
                             # add another cell
                             pdf.cell(200, 10, txt=f"{k} : {v}",
                                      ln=2, align='C')
@@ -316,44 +315,33 @@ def stats_page():
                     )
         else:
             st.markdown(
-                "<h3 style='text-align: center'>No medical record found for these patient </h3>", unsafe_allow_html=True)
+                "<h3 style='text-align: center'>No medical record found for this patient </h3>", unsafe_allow_html=True)
     st.divider()
     st.subheader("Stats")
     ##########################################################################
+    colors = [
+        "#1f77b4", "#ff7f0e"]
     patients_count_by_sex = patients_df['Sex'].value_counts(
     ).reset_index()
     patients_count_by_sex.columns = ['Sex', 'Count']
 
     # Plot bar chart for count of patients by sex
     fig1 = plt.figure()
-    plt.bar(patients_count_by_sex['Sex'], patients_count_by_sex['Count'], color=[
-        "blue", "pink"])
+    plt.bar(patients_count_by_sex['Sex'],
+            patients_count_by_sex['Count'], color=colors)
     plt.xlabel('Sex', fontdict={"size": "15"})
     plt.ylabel('Count', fontdict={"size": "15"})
     plt.title('Count of Patients by Sex', fontdict={"size": "15"})
     plt.yticks(range(0, patients_count_by_sex['Count'].max() + 1))
     #########################################################################
-    records_df = pd.DataFrame(records)
+    records_df = pd.DataFrame(records, columns=[
+                              "id", "patient_id", "tumor_type", "tumor_info", "file_format", "sex", "age"])
     fig2 = None
     fig3 = None
 
     if len(records_df) > 0:
-        # tumor_types_count = records_df[2].value_counts().reset_index()
-        # tumor_types_count.columns = ['tumor_type', 'count']
-
-        # # Plot the bar chart
-        # fig2 = plt.figure()
-        # plt.bar(tumor_types_count['tumor_type'], tumor_types_count['count'], color=[
-        #     "blue", "pink"])
-
-        # plt.xlabel('Tumor Type', fontdict={"size": "20"})
-        # plt.ylabel('Number of Patients', fontdict={"size": "20"})
-        # plt.title('Number of Patients with HGG and LGG Tumor Types', fontdict={
-        #           "size": "20"})
-        # plt.xticks(rotation=0)
-        # plt.yticks(range(0, patients_count_by_sex['Count'].max() + 1))
-        hgg_count = records_df[3].value_counts().get('HGG', 0)
-        lgg_count = records_df[3].value_counts().get('LGG', 0)
+        hgg_count = records_df["tumor_type"].value_counts().get('HGG', 0)
+        lgg_count = records_df["tumor_type"].value_counts().get('LGG', 0)
 
         # Pie chart labels
         labels = ['HGG', 'LGG']
@@ -361,8 +349,8 @@ def stats_page():
         # Data to plot
         sizes = [hgg_count, lgg_count]
 
+        ############## PLOT 2 ####################################################
         # Set colors for the pie slices
-        colors = ['#FF4040', '#008000']
         fig2 = plt.figure()
         # Plot the pie chart
         plt.pie(sizes, labels=labels, colors=colors,
@@ -373,17 +361,34 @@ def stats_page():
 
         # Add a title to the pie chart
         plt.title('HGG and LGG percentage')
+        ###########################################################################
 
-        age_distribution = records_df.groupby(2)[8].mean()
+        ############# PLOT 3 ######################################################
+        import matplotlib.backends.backend_tkagg
+        matplotlib.use("TkAgg")
 
-        # Plot the bar chart
-        fig3 = plt.figure(figsize=(8, 6))
-        age_distribution.plot(kind='bar', color=[
-            "blue", "pink"])
-        plt.xlabel('Tumor Type', fontdict={"size": "20"})
-        plt.ylabel('Average Age', fontdict={"size": "20"})
-        plt.title('Distribution of HGG and LGG Tumor Types based on Age', fontdict={
-                  "size": "20"})
+        # Define the age ranges based on your requirements
+        age_bins = [0, 20, 40, 60, 100]
+        age_labels = ['0-19', '20-39', '40-59', '60+']
+
+        # Bin the age values into the defined age ranges
+        records_df['age_range'] = pd.cut(
+            records_df['age'], age_bins, labels=age_labels)
+
+        # Group the DataFrame by 'age_range' and 'tumor_type' and count the occurrences
+        grouped = records_df.groupby(
+            ['age_range', 'tumor_type']).size().unstack()
+
+        # Create the bar plot
+        fig3, ax = plt.subplots()
+        grouped.plot(kind='bar', ax=ax, color=colors)
+        plt.xlabel('Age Range')
+        plt.ylabel('Count')
+        plt.title('Tumor Type Distribution by Age Range')
+        yticks = range(0, grouped.values.max() + 1)
+        plt.yticks(yticks)
+        plt.legend(title='Tumor Type')
+        ###########################################################################
 
     col1, col2, col3 = st.columns(3)
     with col1:

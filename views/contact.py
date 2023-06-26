@@ -4,7 +4,7 @@ from db_manager import add_message
 
 
 def contact_page():
-    st.markdown("<h1 style='text-align: center'>Contact Us ✉️</h1>",
+    st.markdown("<h1 style='text-align: center'>Contact Us</h1>",
                 unsafe_allow_html=True)
 
     with st.form("contact-form", clear_on_submit=True):

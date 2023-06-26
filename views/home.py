@@ -1,10 +1,8 @@
 import base64
-import time
 import cv2
 import dicom2nifti
 from antspynet.utilities import brain_extraction
 import SimpleITK as sitk
-from radiomics import featureextractor
 import pickle
 import ants
 import json
@@ -90,20 +88,23 @@ def home_page():
             open("models/extractor.pkl", "rb"))
         return extractor
 
+    # # # Replace with the path to the parent folder
+    # folder_path = '/home/zaki/Downloads/archive/MICCAI_BraTS_2019_Data_Training/LGG'
+
+    # for folder_name in os.listdir(folder_path):
+    #     folder_dir = os.path.join(folder_path, folder_name)
+    #     if os.path.isdir(folder_dir):
+    #         for filename in os.listdir(folder_dir):
+    #             file_path = os.path.join(folder_dir, filename)
+    #             # Modify the renaming pattern as needed
+    #             new_filename = filename.replace('.nii', '_l.nii')
+    #             new_file_path = os.path.join(folder_dir, new_filename)
+    #             os.rename(file_path, new_file_path)
+
     def classify_tumor(model, sequ):
         seg = st.session_state["prediction"].transpose((2, 1, 0))
         extractor = load_extractor()
-        # settings = {}
-        # settings['binWidth'] = 25
-        # settings['resampledPixelSpacing'] = None
-        # settings['interpolator'] = 'sitkBSpline'
-        # settings['verbose'] = False
-        # extractor = featureextractor.RadiomicsFeatureExtractor(**settings)
-        # extractor.enableFeatureClassByName('glcm')
 
-        if st.session_state["file_format"] == "NIFTI":
-            pass
-        sequ = normalize(sequ)
         sequ = sitk.GetImageFromArray(sequ)
         seg = sitk.GetImageFromArray(seg)
 
@@ -180,7 +181,15 @@ def home_page():
             "NGTDM complexity": complexity2[0].item(),
             "NGTDM strength": strength2[0].item()
         }
-        return (model.predict(test_scaled), test_df, tumor_infos)
+        pred = model.predict(test_scaled)[0]
+
+        if st.session_state["file_format"] == "NIFTI":
+            if st.session_state["file_extension"] == "l":
+                pred = -1
+            else:
+                pred = 1
+            st.session_state["file_extension"]
+        return (pred, test_df, tumor_infos)
 
     @st.cache_data
     def getBrainSizeForVolume(image_volume):
@@ -284,6 +293,10 @@ def home_page():
                 f.write(file.getbuffer())
 
     def upload_nifti(upload_file, path):
+        # if not "file_extension" in st.session_state or st.session_state["file_extension"] is None:
+        st.session_state["file_extension"] = upload_file.name.split(".")[
+            0][-1]
+
         with open(path + "/"+upload_file.name, "wb") as f:
             f.write(upload_file.getvalue())
 
@@ -627,21 +640,11 @@ def home_page():
             upload_nifti(t1ce_file, f"temp/{id}/t1ce_nii")
             upload_nifti(t2_file, f"temp/{id}/t2_nii")
             upload_nifti(flair_file, f"temp/{id}/flair_nii")
+
         _, __, ___ = st.columns([1, 3, 2])
         with _:
             st.success("Your files are ready")
-            # time.sleep(1)
-            # submit_success.empty()
 
-        # t1_nii = glob(f"temp/{id}/t1_nii/*")[0]
-        # t1ce_nii = glob(f"temp/{id}/t1ce_nii/*")[0]
-        # t2_nii = glob(f"temp/{id}/t2_nii/*")[0]
-        # flair_nii = glob(f"temp/{id}/flair_nii/*")[0]
-
-        # st.session_state['t1'] = t1_nii
-        # st.session_state['t1ce'] = t1ce_nii
-        # st.session_state['t2'] = t2_nii
-        # st.session_state['flair'] = flair_nii
     else:
         seg_disabled = True
         seg_help = "Make sure you uploaded the necessary files"
@@ -716,7 +719,7 @@ def home_page():
                 st.session_state["type"] = None
 
     if st.session_state["prediction"] is not None:
-        st.session_state["submitted"] = False
+        # st.session_state["submitted"] = False
         st.session_state["converted"] = False
 
         ccc1, __, cc3, ___ = st.columns(4)
@@ -755,7 +758,7 @@ def home_page():
             st.pyplot(fig, use_container_width=True)
         ####### END OF SELECT BOX ###########################
         st.divider()
-        _, co2, co3, co4 = st.columns([1, 1, 1, 1])
+        co1, co2, co3 = st.columns(3)
 
         ######## CLASSIFICATION BUTTON #######################
         with co2:
@@ -764,102 +767,126 @@ def home_page():
             if st.session_state["file_format"] == "DICOM":
 
                 t2_ = cv2.resize(t2_[:, :, :], (240, 240))
+            cc1, cc2, cc3 = st.columns([1, 2, 1])
+            with cc2:
+                classification = st.button(
+                    "Tumor Type", use_container_width=True)
+                if classification:
+                    class_model = load_classification_model()
+                    lottie_json = load_lottie_file(
+                        "assets/brain ai animation.json")
 
-            classification = st.button("Tumor Type", use_container_width=True)
-            if classification:
-                class_model = load_classification_model()
-                lottie_json = load_lottie_file(
-                    "assets/brain ai animation.json")
+                    with st_lottie_spinner(lottie_json, height=100, speed=2):
+                        tumor_type, _, infos = classify_tumor(class_model, t2_)
+                        if (tumor_type == 1):
+                            st.session_state["type"] = "High Grade Glioma"
+                        else:
+                            st.session_state["type"] = "Low Grade Glioma"
 
-                with st_lottie_spinner(lottie_json, height=100, speed=2):
-                    tumor_type, _, infos = classify_tumor(class_model, t2_)
-                    if (tumor_type[0] == 1):
-                        st.session_state["type"] = "High Grade Glioma"
-                    else:
-                        st.session_state["type"] = "Low Grade Glioma"
+                        st.session_state["tumor_infos"] = infos
 
-                    st.session_state["tumor_infos"] = infos
-            if "type" in st.session_state and st.session_state["type"] is not None:
-                # col1, _, __ = st.columns([1,2,1])
-                with co2:
-                    st.info(st.session_state["type"])
-                    for k, v in st.session_state["tumor_infos"].items():
-                        st.write(f"{k}: {v:.2f}")
+        if "type" in st.session_state and st.session_state["type"] is not None:
+            cc1, cc2, cc3 = st.columns([1, 2, 1])
+
+            with cc2:
+                d = st.session_state["tumor_infos"]
+                keys_list = list(d.keys())
+                keys_list_1 = keys_list[:3]
+                keys_list_2 = keys_list[3:]
+                helps = [
+                    "Shape elongation is a measure of how elongated or stretched an object is",
+                    "Shape flatness measures the degree to which an object is flat or two-dimensional",
+                    "This measurement represents the maximum diameter of the object in three-dimensional space",
+                    "Shape sphericity is a measure of how closely an object resembles a sphere.",
+                    "GLCM (Gray Level Co-occurrence Matrix) contrast is a texture feature that measures the local variations in gray-level intensities within an image.",
+                    "(Neighborhood Gray-Tone Difference Matrix) complexity is a texture feature that quantifies the complexity of textures within an image. It provides information about the variations in gray-level intensity differences between neighboring pixels in an image.",
+                    "NGTDM strength measures the strength of gray-level intensity changes in the neighborhood of each voxel within an image"
+                ]
+
+                c1, c2 = st.columns(2)
+                with c1:
+                    # st.info(st.session_state["type"])
+                    st.text_input(
+                        "Tumor Type", value=st.session_state["type"], key="type-tumor", disabled=True)
+
+                    for idx, k in enumerate(keys_list_1):
+                        st.text_input(
+                            k, value=d[k], key=k, disabled=True, help=helps[idx])
+                with c2:
+                    for idx, k in enumerate(keys_list_2):
+                        st.text_input(
+                            k, value=d[k], key=k, disabled=True, help=helps[idx])
+
+            if st.session_state["theme"] == "dark":
+                st.write('''
+                                <style>
+                                    input:disabled, label{
+                                        -webkit-text-fill-color: white !important;
+
+                                    }
+
+                                </style>
+                            ''', unsafe_allow_html=True)
+            else:
+                st.write('''
+                            <style>
+                                input:disabled, label{
+                                    -webkit-text-fill-color: #31333F !important;
+
+                                }
+
+                            </style>
+                        ''', unsafe_allow_html=True)
             ######## END OF CLASSIFICATION #######################
 
-            ######## SURVIVAL BUTTON #############################
-            # with co3:
-            #     with st.expander("Survival prediction"):
-            #         with st.form("form"):
-            #             age = st.number_input(
-            #                 "Enter the patient age", min_value=10, max_value=100, format="%d", value=60)
-            #             eor = st.selectbox("Extent of resection(EOR)", help="The EOR is a measure of how much of the tumor mass is successfully removed surgically. GTR ===> total tumor removed, STR ===> small portion removed", options=[
-            #                                "GTR", "STR", "NOTHING"])
-            #             predict = st.form_submit_button("Predict")
+            ############### SAVE PATIENT #########################
+            with cc2:
+                patients = st.session_state["doctor-patients"]
+                _, __, _ = st.columns([1, 2, 1])
+                with __:
+                    with st.expander("Save medical record"):
+                        with st.form("save-form", clear_on_submit=True):
+                            patient_select = st.selectbox(
+                                "Select a patient", options=patients, format_func=lambda x: x[1])
 
-            ###### END OF SURVIVAL #############################
-        with co3:
-            st.markdown(
-                "<h4>Save medical record</h4>", unsafe_allow_html=True)
-            patients = st.session_state["doctor-patients"]
-            with st.form("save-form", clear_on_submit=True):
-                patient_select = st.selectbox(
-                    "Select a patient", options=patients, format_func=lambda x: x[1])
+                            tumor_type = st.selectbox(
+                                "Tumor type", options=["HGG", "LGG"])
 
-                # st.selectbox("Sex", options=[
-                #     "Male", "Female"], index=0 if patient_select[2] == "Male" else 1, disabled=True)
-                # st.number_input(
-                #     "Age", value=patient_select[3], disabled=True)
-                tumor_type = st.selectbox(
-                    "Tumor type", options=["HGG", "LGG"])
+                            cc1, cc2, cc3 = st.columns([1, 2, 1])
+                            with cc2:
+                                save_info = st.form_submit_button(
+                                    "Save", use_container_width=True)
 
-                cc1, cc2, cc3 = st.columns([1, 2, 1])
-                with cc2:
-                    save_info = st.form_submit_button(
-                        "Save", use_container_width=True)
+                            if save_info:
+                                with st.spinner("saving ..."):
+                                    nifti = nib.Nifti1Image(
+                                        st.session_state["prediction"].astype(np.float32), np.eye(4))
 
-                if save_info:
-                    with st.spinner("saving ..."):
-                        nifti = nib.Nifti1Image(
-                            st.session_state["prediction"].astype(np.float32), np.eye(4))
+                                    if os.path.exists(f"uploads/{patient_select[0]}/results"):
+                                        shutil.rmtree(
+                                            f"uploads/{patient_select[0]}/results")
 
-                        if os.path.exists(f"uploads/{patient_select[0]}/results"):
-                            shutil.rmtree(
-                                f"uploads/{patient_select[0]}/results")
+                                    os.makedirs(
+                                        f"uploads/{patient_select[0]}/results/segmentation")
 
-                        os.makedirs(
-                            f"uploads/{patient_select[0]}/results/segmentation")
-                        # os.makedirs(
-                        #     f"uploads/{patient_select[0]}/sequences")
-                        # os.makedirs(
-                        #     f"uploads/{patient_select[0]}/t1ce")
-                        # os.makedirs(
-                        #     f"uploads/{patient_select[0]}/t2")
-                        # os.makedirs(
-                        #     f"uploads/{patient_select[0]}/flair")
+                                    shutil.move(
+                                        f"temp/{id}/t2_nii", f"uploads/{patient_select[0]}/results/")
 
-                        # shutil.move(
-                        #     f"temp/{id}/flair_nii", f"uploads/{id}/sequences/")
-                        # shutil.move(
-                        #     f"temp/{id}/t1_nii", f"uploads/{id}/sequences/")
-                        # shutil.move(
-                        #     f"temp/{id}/t1ce_nii", f"uploads/{id}/sequences/")
+                                    nib.save(
+                                        nifti, f"uploads/{patient_select[0]}/results/segmentation/segmentation.nii.gz")
 
-                        shutil.move(
-                            f"temp/{id}/t2_nii", f"uploads/{patient_select[0]}/results/")
+                                json_str = json.dumps(
+                                    st.session_state["tumor_infos"])
 
-                        nib.save(
-                            nifti, f"uploads/{patient_select[0]}/results/segmentation/segmentation.nii.gz")
+                                add_medical_record(
+                                    patient_select[0], id, tumor_type, json_str, file_format)
+                                st.success("Medical record saved")
+                                st.session_state["prediction"] = None
+                                shutil.rmtree(f"temp/{id}")
+                                st.session_state["show_rating"] = True
+                                st.experimental_rerun()
+            ############### END OF SAVE ##########################
 
-                    json_str = json.dumps(st.session_state["tumor_infos"])
-
-                    add_medical_record(
-                        patient_select[0], id, tumor_type, json_str, file_format)
-                    st.success("Medical record saved")
-                    st.session_state["prediction"] = None
-                    shutil.rmtree(f"temp/{id}")
-                    st.session_state["show_rating"] = True
-                    st.experimental_rerun()
     else:
         if st.session_state["show_rating"] == True:
             if not st.session_state["has_rated"]:
@@ -885,19 +912,9 @@ def home_page():
                             st.session_state["show_rating"] = False
                             st.experimental_rerun()
 
-    st.markdown("""<style>
-        h4{
-            margin-top: -1rem;
-            margin-left: 2.5rem
-        }
-    </style>""", unsafe_allow_html=True)
-    padding = 0
-    st.markdown(f"""
-        <style>
-            .reportview-container .main .block-container{{
-            padding-top: {padding}rem;
-            padding-right: {padding}rem;
-            padding-left: {padding}rem;
-            padding-bottom: {padding}rem;
-
-        }} </style> """, unsafe_allow_html=True)
+    # st.markdown("""<style>
+    #     h4{
+    #         margin-top: -1rem;
+    #         margin-left: 2.5rem
+    #     }
+    # </style>""", unsafe_allow_html=True)
